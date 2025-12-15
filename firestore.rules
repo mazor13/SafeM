@@ -76,14 +76,15 @@ service cloud.firestore {
                      (isOrgAdmin() && belongsToOrganization(orgId));
       
       // Only SuperAdmin can create organizations
-      allow create: if isSuperAdmin() && 
-                       incomingHasOrganizationId();
+      // Note: organizationId can be empty string on initial create, then updated
+      allow create: if isSuperAdmin();
       
       // SuperAdmin can update all, OrgAdmin can update their own
+      // Ensure organizationId matches document ID if provided
       allow update: if (isSuperAdmin() || 
                        (isOrgAdmin() && belongsToOrganization(orgId))) &&
-                       incomingHasOrganizationId() &&
-                       request.resource.data.organizationId == orgId;
+                       (!incomingHasOrganizationId() || 
+                        request.resource.data.organizationId == orgId);
       
       // Only SuperAdmin can delete organizations
       allow delete: if isSuperAdmin();

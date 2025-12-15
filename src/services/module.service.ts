@@ -72,23 +72,23 @@ export const getModuleRecordsByOrganization = async (
 
 /**
  * Update a module record
- * Validates organizationId hasn't changed
+ * Note: organizationId cannot be changed after creation
  */
 export const updateModuleRecord = async <T extends Partial<BaseModuleRecord>>(
   collectionName: string,
   recordId: string,
   data: T
 ): Promise<void> => {
-  // Prevent changing organizationId
-  if ('organizationId' in data && data.organizationId) {
-    throw new Error('Cannot change organizationId of existing record');
-  }
-
   const db = getFirebaseDb();
+  
+  // Remove organizationId from update data to prevent accidental changes
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { organizationId, ...updateData } = data as BaseModuleRecord;
+
   const docRef = doc(db, collectionName, recordId);
 
   await updateDoc(docRef, {
-    ...data,
+    ...updateData,
     updatedAt: serverTimestamp(),
   });
 };

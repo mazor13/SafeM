@@ -19,11 +19,15 @@ const COLLECTION_NAME = 'organizations';
 
 /**
  * Create a new organization
+ * Note: organizationId is set to the document ID for self-reference
+ * This is required for security rules to validate organizationId on all documents
  */
 export const createOrganization = async (
   data: CreateOrganizationData
 ): Promise<string> => {
   const db = getFirebaseDb();
+  
+  // First create the document
   const docRef = await addDoc(collection(db, COLLECTION_NAME), {
     name: data.name,
     nameHebrew: data.nameHebrew,
@@ -41,9 +45,10 @@ export const createOrganization = async (
       module,
       enabled: true,
     })),
+    organizationId: '', // Placeholder to pass initial validation
   });
 
-  // Update the document with its own ID as organizationId
+  // Update with the actual document ID as organizationId
   await updateDoc(doc(db, COLLECTION_NAME, docRef.id), {
     organizationId: docRef.id,
   });

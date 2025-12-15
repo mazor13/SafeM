@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, UserRole } from '../types/user.types';
+import { User, UserRole, ROLE_HIERARCHY } from '../types/user.types';
 
 interface AuthState {
   user: User | null;
@@ -13,13 +13,6 @@ interface AuthState {
   hasRole: (role: UserRole) => boolean;
   hasRoleLevel: (requiredRole: UserRole) => boolean;
 }
-
-const ROLE_HIERARCHY: Record<UserRole, number> = {
-  [UserRole.SUPER_ADMIN]: 4,
-  [UserRole.ORG_ADMIN]: 3,
-  [UserRole.INSPECTOR]: 2,
-  [UserRole.CLIENT]: 1,
-};
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
