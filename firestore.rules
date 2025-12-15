@@ -1,0 +1,240 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get user data from custom claims
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    function getUserOrgId() {
+      return request.auth.token.organizationId;
+    }
+    
+    // Role hierarchy checks
+    function isSuperAdmin() {
+      return isAuthenticated() && getUserRole() == 'super_admin';
+    }
+    
+    function isOrgAdmin() {
+      return isAuthenticated() && getUserRole() == 'org_admin';
+    }
+    
+    function isInspector() {
+      return isAuthenticated() && getUserRole() == 'inspector';
+    }
+    
+    function isClient() {
+      return isAuthenticated() && getUserRole() == 'client';
+    }
+    
+    // Check if user belongs to the same organization as the resource
+    function belongsToOrganization(orgId) {
+      return isAuthenticated() && getUserOrgId() == orgId;
+    }
+    
+    // Check if resource has organizationId field
+    function hasOrganizationId() {
+      return 'organizationId' in resource.data;
+    }
+    
+    // Check if incoming data has organizationId
+    function incomingHasOrganizationId() {
+      return 'organizationId' in request.resource.data;
+    }
+    
+    // Check if organizationId matches user's organization
+    function organizationMatches() {
+      return incomingHasOrganizationId() && 
+             request.resource.data.organizationId == getUserOrgId();
+    }
+    
+    // Check if user has required role level
+    function hasRoleLevel(requiredLevel) {
+      let userLevel = getUserRole() == 'super_admin' ? 4 :
+                      getUserRole() == 'org_admin' ? 3 :
+                      getUserRole() == 'inspector' ? 2 :
+                      getUserRole() == 'client' ? 1 : 0;
+      return userLevel >= requiredLevel;
+    }
+    
+    // ============================================
+    // Organizations Collection
+    // ============================================
+    match /organizations/{orgId} {
+      // SuperAdmin can read all, OrgAdmin can read their own
+      allow read: if isSuperAdmin() || 
+                     (isOrgAdmin() && belongsToOrganization(orgId));
+      
+      // Only SuperAdmin can create organizations
+      allow create: if isSuperAdmin() && 
+                       incomingHasOrganizationId();
+      
+      // SuperAdmin can update all, OrgAdmin can update their own
+      allow update: if (isSuperAdmin() || 
+                       (isOrgAdmin() && belongsToOrganization(orgId))) &&
+                       incomingHasOrganizationId() &&
+                       request.resource.data.organizationId == orgId;
+      
+      // Only SuperAdmin can delete organizations
+      allow delete: if isSuperAdmin();
+    }
+    
+    // ============================================
+    // Users Collection
+    // ============================================
+    match /users/{userId} {
+      // Users can read their own data, higher roles can read users in their org
+      allow read: if isAuthenticated() && 
+                     (request.auth.uid == userId || 
+                      (hasOrganizationId() && belongsToOrganization(resource.data.organizationId)));
+      
+      // OrgAdmin and above can create users in their organization
+      allow create: if hasRoleLevel(3) && 
+                       organizationMatches() &&
+                       incomingHasOrganizationId();
+      
+      // Users can update their own profile, OrgAdmin can update users in their org
+      allow update: if (isAuthenticated() && request.auth.uid == userId) ||
+                       (hasRoleLevel(3) && 
+                        hasOrganizationId() && 
+                        belongsToOrganization(resource.data.organizationId) &&
+                        organizationMatches());
+      
+      // OrgAdmin and above can delete users in their organization
+      allow delete: if hasRoleLevel(3) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Radiation Records Collection
+    // ============================================
+    match /radiationRecords/{recordId} {
+      // Users can read records from their organization
+      allow read: if isAuthenticated() && 
+                     hasOrganizationId() && 
+                     belongsToOrganization(resource.data.organizationId);
+      
+      // Inspector and above can create records
+      allow create: if hasRoleLevel(2) && 
+                       organizationMatches() &&
+                       incomingHasOrganizationId();
+      
+      // Inspector and above can update records in their organization
+      allow update: if hasRoleLevel(2) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId) &&
+                       organizationMatches();
+      
+      // OrgAdmin and above can delete records
+      allow delete: if hasRoleLevel(3) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Laser Records Collection
+    // ============================================
+    match /laserRecords/{recordId} {
+      allow read: if isAuthenticated() && 
+                     hasOrganizationId() && 
+                     belongsToOrganization(resource.data.organizationId);
+      
+      allow create: if hasRoleLevel(2) && 
+                       organizationMatches() &&
+                       incomingHasOrganizationId();
+      
+      allow update: if hasRoleLevel(2) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId) &&
+                       organizationMatches();
+      
+      allow delete: if hasRoleLevel(3) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Fire Safety Records Collection
+    // ============================================
+    match /fireSafetyRecords/{recordId} {
+      allow read: if isAuthenticated() && 
+                     hasOrganizationId() && 
+                     belongsToOrganization(resource.data.organizationId);
+      
+      allow create: if hasRoleLevel(2) && 
+                       organizationMatches() &&
+                       incomingHasOrganizationId();
+      
+      allow update: if hasRoleLevel(2) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId) &&
+                       organizationMatches();
+      
+      allow delete: if hasRoleLevel(3) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Work Safety Records Collection
+    // ============================================
+    match /workSafetyRecords/{recordId} {
+      allow read: if isAuthenticated() && 
+                     hasOrganizationId() && 
+                     belongsToOrganization(resource.data.organizationId);
+      
+      allow create: if hasRoleLevel(2) && 
+                       organizationMatches() &&
+                       incomingHasOrganizationId();
+      
+      allow update: if hasRoleLevel(2) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId) &&
+                       organizationMatches();
+      
+      allow delete: if hasRoleLevel(3) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Training Records Collection
+    // ============================================
+    match /trainingRecords/{recordId} {
+      allow read: if isAuthenticated() && 
+                     hasOrganizationId() && 
+                     belongsToOrganization(resource.data.organizationId);
+      
+      allow create: if hasRoleLevel(2) && 
+                       organizationMatches() &&
+                       incomingHasOrganizationId();
+      
+      allow update: if hasRoleLevel(2) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId) &&
+                       organizationMatches();
+      
+      allow delete: if hasRoleLevel(3) && 
+                       hasOrganizationId() && 
+                       belongsToOrganization(resource.data.organizationId);
+    }
+    
+    // ============================================
+    // Default Deny All
+    // ============================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
