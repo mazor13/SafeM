@@ -6,11 +6,15 @@
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions"
   },
+  "main": "lib/index.js",
   "dependencies": {
     "firebase-admin": "^11.0.0",
     "firebase-functions": "^4.0.0",
     "pdf-lib": "^1.17.1",
     "@google-cloud/kms": "^3.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.9.0"
   },
   "engines": {
     "node": "18"
