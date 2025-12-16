@@ -11,72 +11,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # התקנת Node.js (נדרש בשביל לקמפל את הקוד לפני)
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
+    # התקנת הספריות של הפונקציות
     - name: Install Dependencies
       run: |
         cd functions
         npm install
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
+    # זה התיקון הגדול: שימוש ב-Action מוכן במקום פקודות ידניות
+    # ה-Action הזה מטפל באוטנטיקציה בצורה מושלמת
+    - name: Deploy to Firebase
+      uses: w9jds/firebase-action@master
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        args: deploy --only functions,firestore
+      env:
+        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+        PROJECT_ID: handy-compass-477613-a4
 
-    - name: Set gcloud project
-      run: |
-        gcloud config set project handy-compass-477613-a4
-
-    - name: Enable required APIs
-      run: |
-        gcloud services enable cloudkms.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com storage.googleapis.com --project=handy-compass-477613-a4
-
-    - name: Create KMS key ring if not exists
-      run: |
-        set -e
-        REGION=europe-west1
-        KEYRING=ozen-keyring
-        if ! gcloud kms keyrings describe $KEYRING --location=$REGION --project=handy-compass-477613-a4 >/dev/null 2>&1; then
-          gcloud kms keyrings create $KEYRING --location=$REGION --project=handy-compass-477613-a4
-        else
-          echo "Keyring exists"
-        fi
-
-    - name: Create KMS signing key if not exists
-      run: |
-        set -e
-        REGION=europe-west1
-        KEYRING=ozen-keyring
-        KEY=ozen-signing-key
-        if ! gcloud kms keys describe $KEY --location=$REGION --keyring=$KEYRING --project=handy-compass-477613-a4 >/dev/null 2>&1; then
-          gcloud kms keys create $KEY --location=$REGION --keyring=$KEYRING --purpose=asymmetric-signing --default-algorithm=rsa-sign-pkcs1-2048-sha256 --project=handy-compass-477613-a4
-        else
-          echo "Key exists"
-        fi
-
-    - name: Grant signer role to service account on the key
-      run: |
-        # Save key to file safely
-        echo '${{ secrets.GCP_SA_KEY }}' > gcloud-key.json
-        SERVICE_ACCOUNT_EMAIL=$(jq -r '.client_email' gcloud-key.json)
-        
-        REGION=europe-west1
-        KEYRING=ozen-keyring
-        KEY=ozen-signing-key
-        
-        echo "Granting access to $SERVICE_ACCOUNT_EMAIL"
-        gcloud kms keys add-iam-policy-binding $KEY --location=$REGION --keyring=$KEYRING --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" --role="roles/cloudkms.signer" --project=handy-compass-477613-a4 || true
-
-    - name: Deploy Cloud Functions
-      run: |
-        npm install -g firebase-tools
-        export GOOGLE_APPLICATION_CREDENTIALS=gcloud-key.json
-        # Deploy both functions and firestore rules
-        firebase deploy --only functions,firestore --project=handy-compass-477613-a4
-
-    - name: Cleanup
-      run: |
-        rm -f gcloud-key.json
