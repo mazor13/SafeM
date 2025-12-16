@@ -1,0 +1,67 @@
+name: Deploy Staging
+
+on:
+  push:
+    branches: [ 'scaffold/sprint-0' ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set gcloud project
+      run: |
+        gcloud config set project ozen-staging-2025
+
+    - name: Enable required APIs
+      run: |
+        gcloud services enable cloudkms.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com storage.googleapis.com --project=ozen-staging-2025
+
+    - name: Create KMS key ring if not exists
+      run: |
+        set -e
+        REGION=europe-west1
+        KEYRING=ozen-keyring
+        if ! gcloud kms keyrings describe $KEYRING --location=$REGION --project=ozen-staging-2025 >/dev/null 2>&1; then
+          gcloud kms keyrings create $KEYRING --location=$REGION --project=ozen-staging-2025
+        else
+          echo "Keyring exists"
+        fi
+
+    - name: Create KMS signing key if not exists
+      run: |
+        set -e
+        REGION=europe-west1
+        KEYRING=ozen-keyring
+        KEY=ozen-signing-key
+        if ! gcloud kms keys describe $KEY --location=$REGION --keyring=$KEYRING --project=ozen-staging-2025 >/dev/null 2>&1; then
+          gcloud kms keys create $KEY --location=$REGION --keyring=$KEYRING --purpose=asymmetric-signing --default-algorithm=rsa-sign-pkcs1-2048-sha256 --project=ozen-staging-2025
+        else
+          echo "Key exists"
+        fi
+
+    - name: Grant signer role to service account on the key
+      run: |
+        SERVICE_ACCOUNT_EMAIL=$(jq -r '.client_email' <<<"${{ secrets.GCP_SA_KEY }}")
+        REGION=europe-west1
+        KEYRING=ozen-keyring
+        KEY=ozen-signing-key
+        gcloud kms keys add-iam-policy-binding $KEY --location=$REGION --keyring=$KEYRING --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" --role="roles/cloudkms.signer" --project=ozen-staging-2025 || true
+
+    - name: Deploy Cloud Functions
+      run: |
+        npm install -g firebase-tools
+        echo ${{ secrets.GCP_SA_KEY }} > gcloud-key.json
+        gcloud auth activate-service-account --key-file=gcloud-key.json
+        firebase deploy --only functions --project=ozen-staging-2025
+
+    - name: Cleanup
+      run: |
+        rm -f gcloud-key.json
