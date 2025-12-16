@@ -7,29 +7,33 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
     steps:
     - uses: actions/checkout@v4
 
-    # התקנת Node.js (נדרש בשביל לקמפל את הקוד לפני)
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    # התקנת הספריות של הפונקציות
     - name: Install Dependencies
       run: |
         cd functions
         npm install
 
-    # זה התיקון הגדול: שימוש ב-Action מוכן במקום פקודות ידניות
-    # ה-Action הזה מטפל באוטנטיקציה בצורה מושלמת
-    - name: Deploy to Firebase
-      uses: w9jds/firebase-action@master
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
       with:
-        args: deploy --only functions,firestore
-      env:
-        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-        PROJECT_ID: handy-compass-477613-a4
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Deploy to Firebase
+      run: |
+        npm install -g firebase-tools
+        firebase deploy --only functions,firestore --project=handy-compass-477613-a4 --non-interactive
