@@ -18,19 +18,19 @@ jobs:
 
     - name: Set gcloud project
       run: |
-        gcloud config set project ozen-staging-2025
+        gcloud config set project handy-compass-477613-a4
 
     - name: Enable required APIs
       run: |
-        gcloud services enable cloudkms.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com storage.googleapis.com --project=ozen-staging-2025
+        gcloud services enable cloudkms.googleapis.com cloudfunctions.googleapis.com cloudbuild.googleapis.com firestore.googleapis.com storage.googleapis.com --project=handy-compass-477613-a4
 
     - name: Create KMS key ring if not exists
       run: |
         set -e
         REGION=europe-west1
         KEYRING=ozen-keyring
-        if ! gcloud kms keyrings describe $KEYRING --location=$REGION --project=ozen-staging-2025 >/dev/null 2>&1; then
-          gcloud kms keyrings create $KEYRING --location=$REGION --project=ozen-staging-2025
+        if ! gcloud kms keyrings describe $KEYRING --location=$REGION --project=handy-compass-477613-a4 >/dev/null 2>&1; then
+          gcloud kms keyrings create $KEYRING --location=$REGION --project=handy-compass-477613-a4
         else
           echo "Keyring exists"
         fi
@@ -41,8 +41,8 @@ jobs:
         REGION=europe-west1
         KEYRING=ozen-keyring
         KEY=ozen-signing-key
-        if ! gcloud kms keys describe $KEY --location=$REGION --keyring=$KEYRING --project=ozen-staging-2025 >/dev/null 2>&1; then
-          gcloud kms keys create $KEY --location=$REGION --keyring=$KEYRING --purpose=asymmetric-signing --default-algorithm=rsa-sign-pkcs1-2048-sha256 --project=ozen-staging-2025
+        if ! gcloud kms keys describe $KEY --location=$REGION --keyring=$KEYRING --project=handy-compass-477613-a4 >/dev/null 2>&1; then
+          gcloud kms keys create $KEY --location=$REGION --keyring=$KEYRING --purpose=asymmetric-signing --default-algorithm=rsa-sign-pkcs1-2048-sha256 --project=handy-compass-477613-a4
         else
           echo "Key exists"
         fi
@@ -53,14 +53,14 @@ jobs:
         REGION=europe-west1
         KEYRING=ozen-keyring
         KEY=ozen-signing-key
-        gcloud kms keys add-iam-policy-binding $KEY --location=$REGION --keyring=$KEYRING --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" --role="roles/cloudkms.signer" --project=ozen-staging-2025 || true
+        gcloud kms keys add-iam-policy-binding $KEY --location=$REGION --keyring=$KEYRING --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" --role="roles/cloudkms.signer" --project=handy-compass-477613-a4 || true
 
     - name: Deploy Cloud Functions
       run: |
         npm install -g firebase-tools
         echo ${{ secrets.GCP_SA_KEY }} > gcloud-key.json
         gcloud auth activate-service-account --key-file=gcloud-key.json
-        firebase deploy --only functions --project=ozen-staging-2025
+        firebase deploy --only functions --project=handy-compass-477613-a4
 
     - name: Cleanup
       run: |
