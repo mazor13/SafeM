@@ -1,74 +1,73 @@
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import { onRequest } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import admin from 'firebase-admin';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import * as crypto from 'crypto';
+import crypto from 'crypto';
 import { KeyManagementServiceClient } from '@google-cloud/kms';
 
 admin.initializeApp();
-
-const kmsKeyName = process.env.KMS_KEY_NAME || '';
+const firestore = admin.firestore();
+const storage = admin.storage();
 const kmsClient = new KeyManagementServiceClient();
 
-// PoC: generate a simple PDF report, compute SHA-256 hash, optionally sign with Cloud KMS, and return metadata.
-export const generatePdfReport = functions.https.onRequest(async (req, res) => {
-  try {
-    const { inspectionId = 'demo', title = 'Inspection Report' } = req.body || {};
+const KMS_KEY_NAME = process.env.KMS_KEY_NAME || ''; 
 
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]);
-    const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
-    const fontSize = 12;
-    page.drawText(title, {
-      x: 50,
-      y: 780,
-      size: 18,
-      font: timesRomanFont,
-      color: rgb(0, 0, 0),
-    });
-    page.drawText(`Inspection ID: ${inspectionId}`, { x: 50, y: 760, size: fontSize, font: timesRomanFont });
+export const generatePdfReport = onRequest(
+  { region: 'us-central1' },
+  async (req, res) => {
+    try {
+      const body = req.body ?? {};
+      const inspectionId = String(body.inspectionId ?? 'demo');
+      const title = String(body.title ?? 'Inspection Report');
 
-    const pdfBytes = await pdfDoc.save();
+      // Create PDF
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([595, 842]);
+      const times = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+      page.drawText(title, { x: 50, y: 780, size: 18, font: times, color: rgb(0, 0, 0) });
+      page.drawText(`Inspection ID: ${inspectionId}`, { x: 50, y: 760, size: 12, font: times });
 
-    // compute sha256
-    const hash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
+      const pdfBytes = await pdfDoc.save();
 
-    let signature: string | null = null;
+      // Compute SHA-256 hash
+      const hash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
 
-    if (kmsKeyName) {
-      // Cloud KMS asymmetric signing expects a digest. We use SHA256
-      const digest = crypto.createHash('sha256').update(pdfBytes).digest();
+      // Optionally sign with KMS (asymmetric)
+      let signature: string | null = null;
+      if (KMS_KEY_NAME) {
+        const digest = crypto.createHash('sha256').update(pdfBytes).digest();
+        const [signResp] = await kmsClient.asymmetricSign({
+          name: KMS_KEY_NAME,
+          digest: {
+            sha256: digest,
+          },
+        });
 
-      // Call KMS to sign
-      const [signResp] = await kmsClient.asymmetricSign({
-        name: kmsKeyName,
-        digest: {
-          sha256: digest,
-        },
+        const sigUint8 = signResp.signature as Uint8Array | Buffer;
+        const sigBuf = Buffer.from(sigUint8);
+        signature = sigBuf.toString('base64');
+      }
+
+      // Save PDF to default Storage bucket
+      const bucket = storage.bucket();
+      const filePath = `reports/${inspectionId}.pdf`;
+      const file = bucket.file(filePath);
+      await file.save(Buffer.from(pdfBytes), { contentType: 'application/pdf' });
+
+      // Save metadata to Firestore
+      const docRef = await firestore.collection('documents').add({
+        inspectionId,
+        filePath,
+        hash,
+        signature,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      const sigBuf = signResp.signature as Buffer;
-      signature = sigBuf.toString('base64');
+      res.status(200).json({ inspectionId, filePath, hash, signature, documentId: docRef.id });
+    } catch (err) {
+      logger.error('generatePdfReport failed', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
     }
-
-    // Optionally save to Firebase Storage
-    const bucket = admin.storage().bucket();
-    const filePath = `reports/${inspectionId}.pdf`;
-    const file = bucket.file(filePath);
-    await file.save(Buffer.from(pdfBytes), { contentType: 'application/pdf' });
-
-    // Save metadata to Firestore
-    const docRef = await admin.firestore().collection('documents').add({
-      inspectionId,
-      filePath,
-      hash,
-      signature,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    // Return metadata
-    res.json({ inspectionId, filePath, hash, signature, documentId: docRef.id });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({ error: (err as Error).message });
   }
-});
+);
