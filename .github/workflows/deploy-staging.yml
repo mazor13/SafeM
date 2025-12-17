@@ -2,7 +2,9 @@ name: Deploy Staging
 
 on:
   push:
-    branches: [ 'scaffold/sprint-0' ]
+    branches:
+      - 'scaffold/sprint-0'
+      - 'main'  # <--- הוספנו את זה!
 
 jobs:
   deploy:
