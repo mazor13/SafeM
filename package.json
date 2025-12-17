@@ -1,0 +1,8 @@
+{
+  "name": "ozen-root",
+  "private": true,
+  "workspaces": ["functions"],
+  "scripts": {
+    "install:all": "npm install && cd functions && npm install"
+  }
+}
