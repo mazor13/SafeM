@@ -14,18 +14,18 @@
     "test:emulator": "firebase emulators:exec --project=ozen-staging-2025 --only functions,firestore,storage \"npm run test:integration\""
   },
   "dependencies": {
+    "@google-cloud/kms": "^3.8.0",
+    "axios": "^1.4.0",
     "firebase-admin": "^11.0.0",
     "firebase-functions": "^4.0.0",
-    "pdf-lib": "^1.17.1",
-    "@google-cloud/kms": "^3.8.0",
-    "axios": "^1.4.0"
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.0.0",
+    "firebase-functions-test": "^0.3.3",
     "jest": "^29.0.0",
-    "ts-jest": "^29.0.0",
-    "@types/jest": "^29.0.0",
-    "firebase-functions-test": "^0.3.3"
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.0.0"
   }
 }
