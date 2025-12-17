@@ -29,13 +29,13 @@ export const generatePdfReport = onRequest(
 
       const pdfBytes = await pdfDoc.save();
 
-      // Compute SHA-256 hash
-      const hash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
+      // Compute SHA-256 hash (once for both hex and digest)
+      const digest = crypto.createHash('sha256').update(pdfBytes).digest();
+      const hash = digest.toString('hex');
 
       // Optionally sign with KMS (asymmetric)
       let signature: string | null = null;
       if (KMS_KEY_NAME) {
-        const digest = crypto.createHash('sha256').update(pdfBytes).digest();
         const [signResp] = await kmsClient.asymmetricSign({
           name: KMS_KEY_NAME,
           digest: {
@@ -43,9 +43,10 @@ export const generatePdfReport = onRequest(
           },
         });
 
-        const sigUint8 = signResp.signature as Uint8Array | Buffer;
-        const sigBuf = Buffer.from(sigUint8);
-        signature = sigBuf.toString('base64');
+        if (signResp.signature) {
+          const sigBuf = Buffer.from(signResp.signature);
+          signature = sigBuf.toString('base64');
+        }
       }
 
       // Save PDF to default Storage bucket
