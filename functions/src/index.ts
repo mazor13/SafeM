@@ -83,10 +83,11 @@ export const generatePdfReport = onRequest(
       // Serialize PDF to bytes
       const pdfBytes = await pdfDoc.save();
 
-      // Calculate SHA-256 hash of the PDF content
-      const hash = crypto.createHash("sha256");
-      hash.update(pdfBytes);
-      const documentHash = hash.digest("hex");
+      // Calculate SHA-256 hash of the PDF content (single calculation for both storage and KMS)
+      const hashCalculator = crypto.createHash("sha256");
+      hashCalculator.update(pdfBytes);
+      const hashDigest = hashCalculator.digest();
+      const documentHash = hashDigest.toString("hex");
 
       logger.info("PDF generated and hashed", { 
         inspectionId, 
@@ -106,15 +107,11 @@ export const generatePdfReport = onRequest(
           signature = "INVALID_KMS_KEY_FORMAT";
         } else {
           try {
-            // Create SHA-256 digest directly from PDF bytes
-            const hash256 = crypto.createHash("sha256");
-            hash256.update(pdfBytes);
-            const digest = hash256.digest();
-
+            // Use the already calculated hash digest for KMS signing
             const [signResponse] = await kmsClient.asymmetricSign({
               name: kmsKeyName,
               digest: {
-                sha256: digest,
+                sha256: hashDigest,
               },
             });
 
