@@ -1,8 +1,16 @@
 {
   "name": "ozen-root",
   "private": true,
-  "workspaces": ["functions"],
+  "workspaces": [
+    "functions"
+  ],
   "scripts": {
     "install:all": "npm install && cd functions && npm install"
+  },
+  "dependencies": {
+    "@google-cloud/kms": "^5.2.1",
+    "@google-cloud/storage": "^7.18.0",
+    "firebase-admin": "^13.6.0",
+    "yargs": "^18.0.0"
   }
 }
