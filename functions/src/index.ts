@@ -10,7 +10,8 @@ const firestore = admin.firestore();
 const storage = admin.storage();
 const kmsClient = new KeyManagementServiceClient();
 
-const KMS_KEY_NAME = process.env.KMS_KEY_NAME || ''; 
+// KMS_KEY_NAME should point to the exact key version if you want versioned audit
+const KMS_KEY_NAME = process.env.KMS_KEY_NAME || '';
 
 export const generatePdfReport = onRequest(
   { region: 'us-central1' },
@@ -34,13 +35,16 @@ export const generatePdfReport = onRequest(
 
       // Optionally sign with KMS (asymmetric)
       let signature: string | null = null;
+      let keyVersion: string | null = null;
+
       if (KMS_KEY_NAME) {
+        // store exactly what env var contained for audit
+        keyVersion = KMS_KEY_NAME;
+
         const digest = crypto.createHash('sha256').update(pdfBytes).digest();
         const [signResp] = await kmsClient.asymmetricSign({
           name: KMS_KEY_NAME,
-          digest: {
-            sha256: digest,
-          },
+          digest: { sha256: digest },
         });
 
         const sigUint8 = signResp.signature as Uint8Array | Buffer;
@@ -54,16 +58,17 @@ export const generatePdfReport = onRequest(
       const file = bucket.file(filePath);
       await file.save(Buffer.from(pdfBytes), { contentType: 'application/pdf' });
 
-      // Save metadata to Firestore
+      // Save metadata to Firestore (include keyVersion for audit)
       const docRef = await firestore.collection('documents').add({
         inspectionId,
         filePath,
         hash,
         signature,
+        keyVersion,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      res.status(200).json({ inspectionId, filePath, hash, signature, documentId: docRef.id });
+      res.status(200).json({ inspectionId, filePath, hash, signature, keyVersion, documentId: docRef.id });
     } catch (err) {
       logger.error('generatePdfReport failed', err);
       const msg = err instanceof Error ? err.message : String(err);
