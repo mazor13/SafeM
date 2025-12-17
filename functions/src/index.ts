@@ -99,26 +99,38 @@ export const generatePdfReport = onRequest(
       let signature = "";
 
       if (kmsKeyName) {
-        try {
-          const [signResponse] = await kmsClient.asymmetricSign({
-            name: kmsKeyName,
-            digest: {
-              sha256: Buffer.from(documentHash, "hex"),
-            },
-          });
+        // Validate KMS key name format
+        const kmsKeyPattern = /^projects\/[^/]+\/locations\/[^/]+\/keyRings\/[^/]+\/cryptoKeys\/[^/]+\/cryptoKeyVersions\/[^/]+$/;
+        if (!kmsKeyPattern.test(kmsKeyName)) {
+          logger.warn("Invalid KMS_KEY_NAME format", { kmsKeyName });
+          signature = "INVALID_KMS_KEY_FORMAT";
+        } else {
+          try {
+            // Create SHA-256 digest directly from PDF bytes
+            const hash256 = crypto.createHash("sha256");
+            hash256.update(pdfBytes);
+            const digest = hash256.digest();
 
-          signature = signResponse.signature
-            ? Buffer.from(signResponse.signature).toString("base64")
-            : "";
-          
-          logger.info("Document signed with KMS", { inspectionId });
-        } catch (kmsError) {
-          logger.error("KMS signing failed", { 
-            inspectionId, 
-            error: kmsError instanceof Error ? kmsError.message : String(kmsError)
-          });
-          // Continue without signature in case of KMS error
-          signature = "KMS_SIGNING_FAILED";
+            const [signResponse] = await kmsClient.asymmetricSign({
+              name: kmsKeyName,
+              digest: {
+                sha256: digest,
+              },
+            });
+
+            signature = signResponse.signature
+              ? Buffer.from(signResponse.signature).toString("base64")
+              : "";
+            
+            logger.info("Document signed with KMS", { inspectionId });
+          } catch (kmsError) {
+            logger.error("KMS signing failed", { 
+              inspectionId, 
+              error: kmsError instanceof Error ? kmsError.message : String(kmsError)
+            });
+            // Continue without signature in case of KMS error
+            signature = "KMS_SIGNING_FAILED";
+          }
         }
       } else {
         logger.warn("KMS_KEY_NAME not configured, skipping signature", { inspectionId });
@@ -130,18 +142,42 @@ export const generatePdfReport = onRequest(
       const fileName = `reports/${inspectionId}.pdf`;
       const file = bucket.file(fileName);
 
-      await file.save(Buffer.from(pdfBytes), {
-        contentType: "application/pdf",
-        metadata: {
-          metadata: {
-            inspectionId,
-            generatedAt: timestamp,
-            hash: documentHash,
-          },
-        },
-      });
+      // Validate file size (max 10MB)
+      const maxFileSize = 10 * 1024 * 1024; // 10MB
+      if (pdfBytes.length > maxFileSize) {
+        logger.error("PDF file too large", { 
+          inspectionId, 
+          size: pdfBytes.length,
+          maxSize: maxFileSize 
+        });
+        res.status(413).json({ 
+          error: "PDF file too large",
+          size: pdfBytes.length,
+          maxSize: maxFileSize 
+        });
+        return;
+      }
 
-      logger.info("PDF uploaded to Storage", { inspectionId, fileName });
+      try {
+        await file.save(Buffer.from(pdfBytes), {
+          contentType: "application/pdf",
+          metadata: {
+            metadata: {
+              inspectionId,
+              generatedAt: timestamp,
+              hash: documentHash,
+            },
+          },
+        });
+
+        logger.info("PDF uploaded to Storage", { inspectionId, fileName });
+      } catch (uploadError) {
+        logger.error("Failed to upload PDF to Storage", { 
+          inspectionId, 
+          error: uploadError instanceof Error ? uploadError.message : String(uploadError)
+        });
+        throw uploadError;
+      }
 
       // Save metadata to Firestore
       const docRef = firestore.collection("documents").doc();
