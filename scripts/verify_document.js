@@ -11,41 +11,38 @@ const argv = yargs(hideBin(process.argv))
 const { docId, project: projectId, bucketName } = argv;
 
 console.log('------------------------------------------------');
-console.log(`🔌 Requested Target Project: ${projectId}`);
-
-// --- בדיקת המפתח ---
+// שלב 1: חשיפת הזהות המלאה
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   try {
     const keyData = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-    console.log(`🔑 ACTUAL KEY PROJECT ID:  [ ${keyData.project_id} ]`); // <--- זה יגלה את האמת
-    
-    if (keyData.project_id !== projectId) {
-      console.error('🚨 MISMATCH DETECTED! The key belongs to the wrong project!');
-    }
+    console.log(`🔑 KEY PROJECT ID: [ ${keyData.project_id} ]`);
+    console.log(`📧 KEY EMAIL ADDR: [ ${keyData.client_email} ]`); // <--- זה הנתון החסר שלנו!
   } catch (e) {
-    console.log('Could not read key file details.');
+    console.log('⚠️ Could not read key file.');
   }
 }
-// -------------------
 
 try {
-  admin.initializeApp({
-    storageBucket: bucketName,
-    projectId: projectId
-  });
-  console.log('🤖 Auth initialized.');
+  admin.initializeApp({ projectId, storageBucket: bucketName });
 } catch (e) {
-  console.error('❌ Auth Init Failed:', e.message);
   process.exit(1);
 }
 
 const db = admin.firestore();
 
 async function main() {
-  console.log('🔦 DEBUG: Checking connectivity...');
-  const snapshot = await db.collection('signedDocs').limit(1).get();
-  console.log(`✅ Connection successful. Collection empty? ${snapshot.empty}`);
+  console.log('🔦 DEBUG: Listing ALL Collections visible to this user:');
+  const collections = await db.listCollections();
+  
+  if (collections.length === 0) {
+    console.log('⚠️ NO COLLECTIONS FOUND. This user has no read permissions (or DB is empty).');
+  } else {
+    collections.forEach(col => {
+      console.log(`   📂 Found Collection: [${col.id}]`);
+    });
+  }
 
+  console.log('------------------------------------------------');
   console.log(`🕵️‍♂️ Searching for Doc ID: [${docId}]`);
   const doc = await db.collection('signedDocs').doc(docId).get();
   
