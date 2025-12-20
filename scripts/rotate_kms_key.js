@@ -12,14 +12,19 @@
 const { KeyManagementServiceClient } = require('@google-cloud/kms');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
-const { argv } = require('yargs')
+const yargs = require('yargs/yargs');
+const { hideBin } = require('yargs/helpers');
+
+// התחביר החדש והתקין לקריאת פרמטרים
+const argv = yargs(hideBin(process.argv))
   .option('project', { type: 'string', demandOption: true })
   .option('keyRing', { type: 'string', demandOption: true })
   .option('key', { type: 'string', demandOption: true })
   .option('functionName', { type: 'string', demandOption: true })
   .option('region', { type: 'string', default: 'us-central1' })
   .option('gcloudPath', { type: 'string', default: 'gcloud' })
-  .help();
+  .help()
+  .parse();
 
 const kms = new KeyManagementServiceClient();
 
@@ -62,7 +67,7 @@ async function main() {
 
   // Get Current Env
   console.log('🔍 Reading current config...');
-  const serviceName = functionName.toLowerCase(); // Gen2 service name is usually lowercase
+  const serviceName = functionName.toLowerCase(); 
   let prevKms = '';
   
   try {
