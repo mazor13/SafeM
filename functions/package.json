@@ -16,8 +16,9 @@
   },
   "dependencies": {
     "@google-cloud/kms": "^3.8.0",
-    "firebase-admin": "^11.0.0",
-    "firebase-functions": "^4.0.0",
+    "express": "^4.22.1",
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
@@ -27,6 +28,6 @@
     "firebase-functions-test": "^0.3.3",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.3"
   }
 }

@@ -1,18 +1,16 @@
 {
   "name": "ozen-root",
+  "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "functions"
-  ],
+  "description": "Root scripts for OZEN project",
   "scripts": {
-    "install:all": "npm install && cd functions && npm install"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@google-cloud/kms": "^5.2.1",
-    "@google-cloud/storage": "^7.18.0",
-    "firebase-admin": "^13.6.0"
+    "@google-cloud/kms": "^4.0.0",
+    "firebase-admin": "^12.0.0",
+    "yargs": "^17.0.0"
   },
-  "devDependencies": {
-    "yargs": "^18.0.0"
-  }
+  "author": "",
+  "license": "ISC"
 }
