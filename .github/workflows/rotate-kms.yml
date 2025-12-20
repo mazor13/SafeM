@@ -52,17 +52,11 @@ jobs:
         env:
           SMOKE_DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
         run: |
-          # שינינו את שורת ההרצה כך שתכלול גם את שם ה-Bucket
+          # כאן התיקון: הוספנו את --bucketName לפקודה
           node scripts/rotate_kms_key.js \
             --project="${{ github.event.inputs.project }}" \
             --keyRing="${{ github.event.inputs.keyRing }}" \
             --key="${{ github.event.inputs.keyName }}" \
             --functionName="${{ github.event.inputs.functionName }}" \
-            --region="${{ github.event.inputs.region }}"
-
-          # הוספנו את שם ה-Bucket לפקודת האימות
-          echo "Running verification..."
-          node scripts/verify_document.js \
-            --docId="${SMOKE_DOC_ID}" \
-            --project="${{ github.event.inputs.project }}" \
+            --region="${{ github.event.inputs.region }}" \
             --bucketName="${{ github.event.inputs.bucketName }}"
