@@ -17,6 +17,10 @@ on:
       region:
         description: 'Region'
         default: 'us-central1'
+      bucketName:
+        description: 'Storage Bucket Name'
+        default: 'ozen-staging-2025.appspot.com'
+        required: true
 
 jobs:
   rotate:
@@ -38,14 +42,9 @@ jobs:
         env:
           ROTATE_SA_KEY: ${{ secrets.ROTATE_SA_KEY }}
         run: |
-          # Create Key File
           mkdir -p "${{ runner.temp }}/gcloud"
           echo "$ROTATE_SA_KEY" | base64 --decode > "${{ runner.temp }}/gcloud/rotate-sa.json"
-          
-          # Set Env Var for Node.js
           echo "GOOGLE_APPLICATION_CREDENTIALS=${{ runner.temp }}/gcloud/rotate-sa.json" >> $GITHUB_ENV
-          
-          # Authenticate gcloud CLI (התיקון נמצא כאן)
           gcloud auth activate-service-account --key-file="${{ runner.temp }}/gcloud/rotate-sa.json"
           gcloud config set project ${{ github.event.inputs.project }}
 
@@ -53,9 +52,17 @@ jobs:
         env:
           SMOKE_DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
         run: |
+          # שינינו את שורת ההרצה כך שתכלול גם את שם ה-Bucket
           node scripts/rotate_kms_key.js \
             --project="${{ github.event.inputs.project }}" \
             --keyRing="${{ github.event.inputs.keyRing }}" \
             --key="${{ github.event.inputs.keyName }}" \
             --functionName="${{ github.event.inputs.functionName }}" \
             --region="${{ github.event.inputs.region }}"
+
+          # הוספנו את שם ה-Bucket לפקודת האימות
+          echo "Running verification..."
+          node scripts/verify_document.js \
+            --docId="${SMOKE_DOC_ID}" \
+            --project="${{ github.event.inputs.project }}" \
+            --bucketName="${{ github.event.inputs.bucketName }}"

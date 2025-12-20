@@ -1,65 +1,106 @@
-#!/usr/bin/env node
-const { KeyManagementServiceClient } = require('@google-cloud/kms');
 const admin = require('firebase-admin');
-const { Storage } = require('@google-cloud/storage');
-const crypto = require('crypto');
-const yargs = require('yargs/yargs');
-const { hideBin } = require('yargs/helpers');
-
-const argv = yargs(hideBin(process.argv))
+const { KeyManagementServiceClient } = require('@google-cloud/kms');
+const { argv } = require('yargs')
   .option('docId', { type: 'string', demandOption: true })
   .option('project', { type: 'string', demandOption: true })
-  .argv;
+  .option('bucketName', { type: 'string', demandOption: true }) // הוספנו דרישה מפורשת
+  .help();
+
+const projectId = argv.project;
+const bucketName = argv.bucketName;
+
+console.log(`🔌 Initializing Firebase for project: ${projectId}`);
+console.log(`🪣 Target Storage Bucket: ${bucketName}`);
+
+// Initialize Firebase with the EXPLICIT bucket name
+if (process.env.SA_KEY) {
+  const serviceAccount = JSON.parse(Buffer.from(process.env.SA_KEY, 'base64').toString());
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: bucketName
+  });
+} else {
+  admin.initializeApp({
+    projectId: projectId,
+    storageBucket: bucketName
+  });
+}
+
+const db = admin.firestore();
+const storage = admin.storage();
+const kms = new KeyManagementServiceClient();
 
 async function main() {
-  const project = argv.project;
-  const docId = argv.docId;
+  const { docId } = argv;
+  console.log(`🕵️‍♂️ Verifying Document ID: ${docId}`);
 
-  // Initialize firebase-admin
-  if (admin.apps.length === 0) {
-    admin.initializeApp({ projectId: project });
+  // 1. Fetch Document from Firestore
+  const docRef = db.collection('signedDocs').doc(docId);
+  const docSnap = await docRef.get();
+
+  if (!docSnap.exists) {
+    throw new Error(`❌ Document ${docId} not found in Firestore.`);
   }
   
-  const firestore = admin.firestore();
-  const storage = admin.storage().bucket();
-  const kms = new KeyManagementServiceClient();
-
-  console.log(`Fetching document ${docId} from Firestore...`);
-  const docSnap = await firestore.collection('documents').doc(docId).get();
-  if (!docSnap.exists) {
-    console.error('Document not found');
-    process.exit(2);
-  }
   const data = docSnap.data();
-  const { filePath, signature, keyVersion } = data;
-  if (!filePath || !signature || !keyVersion) {
-    console.error('Document missing required fields (filePath, signature, keyVersion)');
-    process.exit(2);
+  console.log('✅ Document metadata loaded.');
+
+  if (!data.gsPath || !data.signature) {
+    throw new Error('❌ Document is missing gsPath or signature fields.');
   }
 
-  console.log(`Downloading file ${filePath} from default bucket...`);
-  const [buf] = await storage.file(filePath).download();
+  // 2. Download File from Storage
+  // Parsing logic: gs://bucket-name/path/to/file
+  // We strictly check if the file is in the EXPECTED bucket to prevent cross-bucket confusion
+  if (!data.gsPath.includes(bucketName)) {
+      console.warn(`⚠️ Warning: Document points to gsPath ${data.gsPath} but we are verifying against bucket ${bucketName}. Attempting to parse path anyway.`);
+  }
 
-  console.log(`Fetching public key from KMS: ${keyVersion}`);
-  const [pubResp] = await kms.getPublicKey({ name: keyVersion });
-  const publicKeyPem = pubResp.pem;
+  const filePath = data.gsPath.split(`${bucketName}/`)[1];
+  
+  if (!filePath) {
+     throw new Error(`❌ Could not parse file path from gsPath: ${data.gsPath}`);
+  }
 
-  console.log('Verifying signature...');
-  const verifier = crypto.createVerify('RSA-SHA256');
-  verifier.update(buf);
-  verifier.end();
-  const ok = verifier.verify(publicKeyPem, Buffer.from(signature, 'base64'));
+  console.log(`📥 Downloading file: ${filePath}...`);
+  const bucket = storage.bucket(); 
+  const file = bucket.file(filePath);
+  const [exists] = await file.exists();
+  
+  if (!exists) {
+    throw new Error(`❌ File not found in Storage: ${filePath}`);
+  }
 
-  if (ok) {
-    console.log('Signature is VALID ✅');
-    process.exit(0);
+  const [fileContent] = await file.download();
+  console.log(`✅ File downloaded (${fileContent.length} bytes).`);
+
+  // 3. Verify Signature using KMS
+  const keyVersionName = data.keyVersion; 
+  if (!keyVersionName) {
+    throw new Error('❌ Document missing keyVersion field.');
+  }
+
+  console.log(`🔐 Fetching Public Key for version: ${keyVersionName}...`);
+  const [pubKey] = await kms.getPublicKey({ name: keyVersionName });
+  const pem = pubKey.pem;
+
+  console.log('🔏 Verifying signature...');
+  const crypto = require('crypto');
+  const verify = crypto.createVerify('SHA256');
+  verify.update(fileContent);
+  verify.end();
+
+  const signatureBuffer = Buffer.from(data.signature, 'base64');
+  const isValid = verify.verify(pem, signatureBuffer);
+
+  if (isValid) {
+    console.log('✅ SUCCESS: Signature is VALID!');
   } else {
-    console.log('Signature is INVALID ❌');
-    process.exit(1);
+    throw new Error('❌ FAILURE: Signature is INVALID.');
   }
 }
 
 main().catch(err => {
-  console.error(err);
-  process.exit(2);
+  console.error('🚨 Verification failed:', err);
+  process.exit(1);
 });
