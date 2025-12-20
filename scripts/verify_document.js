@@ -10,46 +10,61 @@ const argv = yargs(hideBin(process.argv))
   .help().parse();
 
 const { docId, project: projectId, bucketName } = argv;
+
+console.log('------------------------------------------------');
 console.log(`🔌 Init Firebase: Project=${projectId}`);
 
+// --- זיהוי הרובוט ---
+let serviceAccountEmail = 'Unknown (ADC)';
 if (process.env.SA_KEY) {
-  const sa = JSON.parse(Buffer.from(process.env.SA_KEY, 'base64').toString());
-  admin.initializeApp({ credential: admin.credential.cert(sa), storageBucket: bucketName });
+  try {
+    const sa = JSON.parse(Buffer.from(process.env.SA_KEY, 'base64').toString());
+    serviceAccountEmail = sa.client_email; // כאן הזהב! שולפים את האימייל מהמפתח
+    console.log(`🤖 I AM LOGGED IN AS: [ ${serviceAccountEmail} ]`); 
+    
+    admin.initializeApp({
+      credential: admin.credential.cert(sa),
+      storageBucket: bucketName
+    });
+  } catch (e) {
+    console.error('❌ Error parsing SA_KEY:', e.message);
+  }
 } else {
+  console.log('🤖 I AM LOGGED IN AS: [ Default / Local ADC ]');
   admin.initializeApp({ projectId, storageBucket: bucketName });
 }
+// --------------------
 
 const db = admin.firestore();
 
 async function main() {
-  console.log('------------------------------------------------');
   console.log('🔦 DEBUG MODE: Listing documents in Firestore:');
   
-  // ננסה לקרוא מסמכים כדי לראות מה באמת קיים שם
   try {
     const snapshot = await db.collection('signedDocs').limit(5).get();
+    
     if (snapshot.empty) {
-      console.log('⚠️ Collection "signedDocs" appears EMPTY.');
+      console.log('⚠️ Collection "signedDocs" appears EMPTY to this user.');
+      console.log('👉 ACTION REQUIRED: Grant "Cloud Datastore User" role to:', serviceAccountEmail);
     } else {
       snapshot.forEach(doc => {
-        // הסוגריים כאן יעזרו לנו לראות רווחים נסתרים
         console.log(`   📄 Found ID: [${doc.id}]`); 
       });
     }
   } catch (err) {
-    console.error('⚠️ Error listing documents (Permission?):', err.message);
+    console.error('❌ CRITICAL PERMISSION ERROR:', err.message);
   }
 
   console.log('------------------------------------------------');
-  console.log(`🕵️‍♂️ Searching for specific Doc ID from Secret: [${docId}]`);
+  console.log(`🕵️‍♂️ Searching for specific Doc ID: [${docId}]`);
   
   const doc = await db.collection('signedDocs').doc(docId).get();
   
   if (!doc.exists) {
-    throw new Error(`❌ Doc [${docId}] NOT FOUND. Please compare with the list above.`);
+    throw new Error(`❌ Doc [${docId}] NOT FOUND.`);
   }
   
-  console.log('✅ Document Found! ID matches.');
+  console.log('✅ Document Found! Metadata loaded.');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
