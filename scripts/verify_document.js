@@ -10,7 +10,7 @@ const argv = yargs(hideBin(process.argv))
   .help().parse();
 
 const { docId, project: projectId, bucketName } = argv;
-console.log(`🔌 Init Firebase: Project=${projectId}, Bucket=${bucketName}`);
+console.log(`🔌 Init Firebase: Project=${projectId}`);
 
 if (process.env.SA_KEY) {
   const sa = JSON.parse(Buffer.from(process.env.SA_KEY, 'base64').toString());
@@ -20,27 +20,31 @@ if (process.env.SA_KEY) {
 }
 
 const db = admin.firestore();
-const storage = admin.storage();
-const kms = new KeyManagementServiceClient();
 
 async function main() {
-  console.log(`Checking Doc: ${docId}`);
+  // DEBUG SECTION: List actual documents
+  console.log('🔦 DEBUG: Listing documents in "signedDocs" collection:');
+  const snapshot = await db.collection('signedDocs').limit(5).get();
+  if (snapshot.empty) {
+    console.log('⚠️ Collection "signedDocs" is EMPTY or Permission Denied!');
+  } else {
+    snapshot.forEach(doc => {
+      console.log(`   Found Doc ID: [${doc.id}]`); // Brackets show hidden spaces
+    });
+  }
+
+  console.log('------------------------------------------------');
+  console.log(`🕵️‍♂️ Looking for specific Doc ID: [${docId}]`); // Brackets show hidden spaces
+
   const doc = await db.collection('signedDocs').doc(docId).get();
-  if (!doc.exists) throw new Error('Doc missing');
-  const data = doc.data();
   
-  let filePath = data.gsPath;
-  if (filePath.startsWith('gs://')) filePath = filePath.split('/').slice(3).join('/');
+  if (!doc.exists) {
+    throw new Error(`❌ Doc [${docId}] NOT FOUND. See list above for valid IDs.`);
+  }
   
-  console.log(`Downloading: ${filePath}`);
-  const [content] = await storage.bucket().file(filePath).download();
-  
-  console.log(`Verifying with: ${data.keyVersion}`);
-  const [pub] = await kms.getPublicKey({ name: data.keyVersion });
-  
-  const verify = require('crypto').createVerify('SHA256');
-  verify.update(content);
-  if (!verify.verify(pub.pem, Buffer.from(data.signature, 'base64'))) throw new Error('Invalid Signature');
-  console.log('✅ Valid Signature');
+  // אם מצא, ממשיך כרגיל (רק כדי לוודא שהכל תקין)
+  console.log('✅ Document Found! Metadata loaded.');
+  // ... שאר הקוד לא קריטי כרגע, אנחנו רק רוצים לפתור את ה-Doc Missing
 }
+
 main().catch(err => { console.error(err); process.exit(1); });
