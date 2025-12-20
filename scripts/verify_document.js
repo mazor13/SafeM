@@ -11,15 +11,29 @@ const argv = yargs(hideBin(process.argv))
 const { docId, project: projectId, bucketName } = argv;
 
 console.log('------------------------------------------------');
-console.log(`🔌 Init Firebase: Project=${projectId}`);
+console.log(`🔌 Requested Target Project: ${projectId}`);
+
+// --- בדיקת המפתח ---
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  try {
+    const keyData = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    console.log(`🔑 ACTUAL KEY PROJECT ID:  [ ${keyData.project_id} ]`); // <--- זה יגלה את האמת
+    
+    if (keyData.project_id !== projectId) {
+      console.error('🚨 MISMATCH DETECTED! The key belongs to the wrong project!');
+    }
+  } catch (e) {
+    console.log('Could not read key file details.');
+  }
+}
+// -------------------
 
 try {
-  // המהפכה: אין כאן credentials. הספריה מוצאת את המשתנה GOOGLE_APPLICATION_CREDENTIALS לבד.
   admin.initializeApp({
     storageBucket: bucketName,
     projectId: projectId
   });
-  console.log('🤖 Auth initialized via Standard Environment Variables (ADC).');
+  console.log('🤖 Auth initialized.');
 } catch (e) {
   console.error('❌ Auth Init Failed:', e.message);
   process.exit(1);
@@ -29,20 +43,13 @@ const db = admin.firestore();
 
 async function main() {
   console.log('🔦 DEBUG: Checking connectivity...');
-  try {
-    const snapshot = await db.collection('signedDocs').limit(1).get();
-    console.log(`✅ Connection successful. Collection empty? ${snapshot.empty}`);
-  } catch (err) {
-    console.error('❌ Firestore Access Denied:', err.message);
-    process.exit(1);
-  }
+  const snapshot = await db.collection('signedDocs').limit(1).get();
+  console.log(`✅ Connection successful. Collection empty? ${snapshot.empty}`);
 
   console.log(`🕵️‍♂️ Searching for Doc ID: [${docId}]`);
   const doc = await db.collection('signedDocs').doc(docId).get();
   
-  if (!doc.exists) {
-    throw new Error(`❌ Doc [${docId}] NOT FOUND.`);
-  }
+  if (!doc.exists) throw new Error(`❌ Doc [${docId}] NOT FOUND.`);
   
   console.log('✅ Document Found! Success.');
 }
