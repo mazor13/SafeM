@@ -22,7 +22,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Prepare SA
+      # 1. הגדרת אימות (ADC) - בדיוק כמו ב-Workflow הידני
+      - name: Setup Global Auth (ADC)
         env:
           ROTATE_SA_KEY: ${{ secrets.ROTATE_SA_KEY }}
         run: |
@@ -30,12 +31,12 @@ jobs:
           echo "$ROTATE_SA_KEY" | base64 --decode > "${{ runner.temp }}/gcloud/rotate-sa.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=${{ runner.temp }}/gcloud/rotate-sa.json" >> $GITHUB_ENV
 
+      # 2. הרצת הסקריפט עם הפרמטרים החדשים
       - name: Run Verification Script
         env:
           SMOKE_DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
           PROJECT_ID: 'ozen-staging-2025'
         run: |
-          # כאן התיקון: הוספנו את --bucketName לפקודה
           node scripts/verify_document.js \
             --docId="${SMOKE_DOC_ID}" \
             --project="${PROJECT_ID}" \
