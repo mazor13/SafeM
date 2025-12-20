@@ -1,0 +1,54 @@
+name: Rotate KMS Key (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      functionName:
+        description: 'Gen-2 Function Name'
+        default: 'verifySignatureEndpoint'
+      project:
+        description: 'GCP Project'
+        default: 'ozen-staging-2025'
+      keyRing:
+        description: 'KMS KeyRing'
+        default: 'ozen-keyring'
+      keyName:
+        description: 'KMS CryptoKey'
+        default: 'ozen-signing-key'
+      region:
+        description: 'Region'
+        default: 'us-central1'
+
+jobs:
+  rotate:
+    name: Rotate KMS Key
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare Rotation SA
+        env:
+          ROTATE_SA_KEY: ${{ secrets.ROTATE_SA_KEY }}
+        run: |
+          mkdir -p "${{ runner.temp }}/gcloud"
+          echo "$ROTATE_SA_KEY" | base64 --decode > "${{ runner.temp }}/gcloud/rotate-sa.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ runner.temp }}/gcloud/rotate-sa.json" >> $GITHUB_ENV
+
+      - name: Run Rotation Script
+        env:
+          SMOKE_DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
+        run: |
+          node scripts/rotate_kms_key.js \
+            --project="${{ github.event.inputs.project }}" \
+            --keyRing="${{ github.event.inputs.keyRing }}" \
+            --key="${{ github.event.inputs.keyName }}" \
+            --functionName="${{ github.event.inputs.functionName }}" \
+            --region="${{ github.event.inputs.region }}"
