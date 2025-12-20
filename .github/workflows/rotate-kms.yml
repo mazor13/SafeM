@@ -44,20 +44,22 @@ jobs:
         run: |
           mkdir -p "${{ runner.temp }}/gcloud"
           echo "$ROTATE_SA_KEY" | base64 --decode > "${{ runner.temp }}/gcloud/rotate-sa.json"
-          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ runner.temp }}/gcloud/rotate-sa.json" >> $GITHUB_ENV
+          # אנחנו יוצרים את הקובץ כאן, ונשתמש בנתיב שלו למטה
+          
+          # Auth gcloud
           gcloud auth activate-service-account --key-file="${{ runner.temp }}/gcloud/rotate-sa.json"
           gcloud config set project ${{ github.event.inputs.project }}
 
       - name: Run Rotation Script
         env:
           SMOKE_DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
-          # התיקון הקריטי: אנחנו מעבירים את המפתח לסקריפט!
-          SA_KEY: ${{ secrets.ROTATE_SA_KEY }}
         run: |
+          # כאן התיקון הסופי: העברת הנתיב המלא לקובץ המפתח
           node scripts/rotate_kms_key.js \
             --project="${{ github.event.inputs.project }}" \
             --keyRing="${{ github.event.inputs.keyRing }}" \
             --key="${{ github.event.inputs.keyName }}" \
             --functionName="${{ github.event.inputs.functionName }}" \
             --region="${{ github.event.inputs.region }}" \
-            --bucketName="${{ github.event.inputs.bucketName }}"
+            --bucketName="${{ github.event.inputs.bucketName }}" \
+            --keyFile="${{ runner.temp }}/gcloud/rotate-sa.json"
