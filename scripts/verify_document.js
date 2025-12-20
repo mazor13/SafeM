@@ -1,10 +1,15 @@
 const admin = require('firebase-admin');
 const { KeyManagementServiceClient } = require('@google-cloud/kms');
-const { argv } = require('yargs')
+const yargs = require('yargs/yargs');
+const { hideBin } = require('yargs/helpers');
+
+// שימוש בתחביר המודרני של yargs (כמו שעשינו ברוטציה)
+const argv = yargs(hideBin(process.argv))
   .option('docId', { type: 'string', demandOption: true })
   .option('project', { type: 'string', demandOption: true })
-  .option('bucketName', { type: 'string', demandOption: true }) // הוספנו דרישה מפורשת
-  .help();
+  .option('bucketName', { type: 'string', demandOption: true })
+  .help()
+  .parse();
 
 const projectId = argv.project;
 const bucketName = argv.bucketName;
@@ -12,14 +17,21 @@ const bucketName = argv.bucketName;
 console.log(`🔌 Initializing Firebase for project: ${projectId}`);
 console.log(`🪣 Target Storage Bucket: ${bucketName}`);
 
-// Initialize Firebase with the EXPLICIT bucket name
+// Initialize Firebase
 if (process.env.SA_KEY) {
+  // אם רץ ב-CI עם מפתח Service Account
   const serviceAccount = JSON.parse(Buffer.from(process.env.SA_KEY, 'base64').toString());
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     storageBucket: bucketName
   });
+} else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  // אם רץ עם רובוט רוטציה שיש לו Credentials בקובץ
+  admin.initializeApp({
+    storageBucket: bucketName
+  });
 } else {
+  // ריצה מקומית או ברירת מחדל
   admin.initializeApp({
     projectId: projectId,
     storageBucket: bucketName
@@ -51,12 +63,15 @@ async function main() {
 
   // 2. Download File from Storage
   // Parsing logic: gs://bucket-name/path/to/file
-  // We strictly check if the file is in the EXPECTED bucket to prevent cross-bucket confusion
-  if (!data.gsPath.includes(bucketName)) {
-      console.warn(`⚠️ Warning: Document points to gsPath ${data.gsPath} but we are verifying against bucket ${bucketName}. Attempting to parse path anyway.`);
+  let filePath = '';
+  if (data.gsPath.includes(bucketName)) {
+      filePath = data.gsPath.split(`${bucketName}/`)[1];
+  } else {
+      // Fallback parsing just in case
+      console.warn(`⚠️ Warning: gsPath ${data.gsPath} does not contain bucket name ${bucketName}. Trying generic parse.`);
+      const parts = data.gsPath.split('/');
+      filePath = parts.slice(3).join('/'); // gs://bucket/file...
   }
-
-  const filePath = data.gsPath.split(`${bucketName}/`)[1];
   
   if (!filePath) {
      throw new Error(`❌ Could not parse file path from gsPath: ${data.gsPath}`);
