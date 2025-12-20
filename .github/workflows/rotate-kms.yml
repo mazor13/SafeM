@@ -34,13 +34,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Prepare Rotation SA
+      - name: Prepare Rotation SA & Auth gcloud
         env:
           ROTATE_SA_KEY: ${{ secrets.ROTATE_SA_KEY }}
         run: |
+          # Create Key File
           mkdir -p "${{ runner.temp }}/gcloud"
           echo "$ROTATE_SA_KEY" | base64 --decode > "${{ runner.temp }}/gcloud/rotate-sa.json"
+          
+          # Set Env Var for Node.js
           echo "GOOGLE_APPLICATION_CREDENTIALS=${{ runner.temp }}/gcloud/rotate-sa.json" >> $GITHUB_ENV
+          
+          # Authenticate gcloud CLI (התיקון נמצא כאן)
+          gcloud auth activate-service-account --key-file="${{ runner.temp }}/gcloud/rotate-sa.json"
+          gcloud config set project ${{ github.event.inputs.project }}
 
       - name: Run Rotation Script
         env:
