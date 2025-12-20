@@ -1,0 +1,46 @@
+name: Post-deploy Verification
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  post_deploy_verify:
+    name: Post-deploy verification
+    runs-on: ubuntu-latest
+    # הערה: אם ה-Deploy שלך הוא ב-Workflow נפרד, אפשר להסיר את ה-needs
+    # needs: deploy 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install functions dependencies
+        run: |
+          cd functions
+          npm ci
+
+      - name: Prepare service account key
+        env:
+          SA_KEY: ${{ secrets.VERIFY_SA_KEY }}
+        run: |
+          mkdir -p "${{ runner.temp }}/gcloud"
+          echo "$SA_KEY" | base64 --decode > "${{ runner.temp }}/gcloud/sa-key.json"
+          echo "SA key written to runner temp"
+
+      - name: Set GOOGLE_APPLICATION_CREDENTIALS
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ runner.temp }}/gcloud/sa-key.json" >> $GITHUB_ENV
+
+      - name: Run verification CLI against smoke doc
+        env:
+          PROJECT_ID: ozen-staging-2025
+          DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
+        run: |
+          node scripts/verify_document.js --docId="${DOC_ID}" --project="${PROJECT_ID}"

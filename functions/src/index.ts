@@ -76,3 +76,4 @@ export const generatePdfReport = onRequest(
     }
   }
 );
+export * from './verifySignature';

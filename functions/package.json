@@ -19,7 +19,7 @@
     "firebase-functions": "^4.0.0",
     "pdf-lib": "^1.17.1",
     "@google-cloud/kms": "^3.8.0",
-    "axios": "^1.4.0"
+
   },
   "devDependencies": {
     "typescript": "^5.0.0",
