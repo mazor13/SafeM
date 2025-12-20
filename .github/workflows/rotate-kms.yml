@@ -51,8 +51,9 @@ jobs:
       - name: Run Rotation Script
         env:
           SMOKE_DOC_ID: ${{ secrets.SMOKE_DOC_ID }}
+          # התיקון הקריטי: אנחנו מעבירים את המפתח לסקריפט!
+          SA_KEY: ${{ secrets.ROTATE_SA_KEY }}
         run: |
-          # כאן התיקון: הוספנו את --bucketName לפקודה
           node scripts/rotate_kms_key.js \
             --project="${{ github.event.inputs.project }}" \
             --keyRing="${{ github.event.inputs.keyRing }}" \
