@@ -2,7 +2,6 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import admin from 'firebase-admin';
 import { KeyManagementServiceClient } from '@google-cloud/kms';
-import { Storage } from '@google-cloud/storage';
 import crypto from 'crypto';
 
 // Initialize only if not already initialized
