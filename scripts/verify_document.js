@@ -22,29 +22,34 @@ if (process.env.SA_KEY) {
 const db = admin.firestore();
 
 async function main() {
-  // DEBUG SECTION: List actual documents
-  console.log('🔦 DEBUG: Listing documents in "signedDocs" collection:');
-  const snapshot = await db.collection('signedDocs').limit(5).get();
-  if (snapshot.empty) {
-    console.log('⚠️ Collection "signedDocs" is EMPTY or Permission Denied!');
-  } else {
-    snapshot.forEach(doc => {
-      console.log(`   Found Doc ID: [${doc.id}]`); // Brackets show hidden spaces
-    });
+  console.log('------------------------------------------------');
+  console.log('🔦 DEBUG MODE: Listing documents in Firestore:');
+  
+  // ננסה לקרוא מסמכים כדי לראות מה באמת קיים שם
+  try {
+    const snapshot = await db.collection('signedDocs').limit(5).get();
+    if (snapshot.empty) {
+      console.log('⚠️ Collection "signedDocs" appears EMPTY.');
+    } else {
+      snapshot.forEach(doc => {
+        // הסוגריים כאן יעזרו לנו לראות רווחים נסתרים
+        console.log(`   📄 Found ID: [${doc.id}]`); 
+      });
+    }
+  } catch (err) {
+    console.error('⚠️ Error listing documents (Permission?):', err.message);
   }
 
   console.log('------------------------------------------------');
-  console.log(`🕵️‍♂️ Looking for specific Doc ID: [${docId}]`); // Brackets show hidden spaces
-
+  console.log(`🕵️‍♂️ Searching for specific Doc ID from Secret: [${docId}]`);
+  
   const doc = await db.collection('signedDocs').doc(docId).get();
   
   if (!doc.exists) {
-    throw new Error(`❌ Doc [${docId}] NOT FOUND. See list above for valid IDs.`);
+    throw new Error(`❌ Doc [${docId}] NOT FOUND. Please compare with the list above.`);
   }
   
-  // אם מצא, ממשיך כרגיל (רק כדי לוודא שהכל תקין)
-  console.log('✅ Document Found! Metadata loaded.');
-  // ... שאר הקוד לא קריטי כרגע, אנחנו רק רוצים לפתור את ה-Doc Missing
+  console.log('✅ Document Found! ID matches.');
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
