@@ -10,44 +10,39 @@ const argv = yargs(hideBin(process.argv))
 
 const { docId, project: projectId, bucketName } = argv;
 
-console.log('------------------------------------------------');
-// אתחול (ADC)
+// Initialize Firebase using Application Default Credentials (ADC)
 try {
-  admin.initializeApp({ projectId, storageBucket: bucketName });
-  console.log('🤖 Auth initialized (ADC).');
+  admin.initializeApp({
+    projectId: projectId,
+    storageBucket: bucketName
+  });
 } catch (e) {
+  console.error('❌ Auth Init Failed:', e.message);
   process.exit(1);
 }
 
 const db = admin.firestore();
+const COLLECTION_NAME = 'documents';
 
 async function main() {
-  // השינוי הגדול: השם האמיתי של הקולקשן אצלך
-  const COLLECTION_NAME = 'documents'; 
-
-  console.log(`🔎 Target Collection: ${COLLECTION_NAME}`);
-  console.log(`🕵️‍♂️ Searching for Doc ID: [${docId}]`);
+  console.log(`🔎 Verifying document [${docId}] in collection [${COLLECTION_NAME}]...`);
   
   const doc = await db.collection(COLLECTION_NAME).doc(docId).get();
   
   if (!doc.exists) {
-    // בדיקה נוספת: אולי המסמך קיים אבל ה-ID ב-Secret לא נכון?
-    console.log('❌ Doc NOT FOUND. Printing first 3 docs in collection to help you verify IDs:');
-    const snap = await db.collection(COLLECTION_NAME).limit(3).get();
-    snap.forEach(d => console.log(`   - Available ID: ${d.id}`));
-    
-    throw new Error(`❌ Doc [${docId}] does not exist in [${COLLECTION_NAME}]. Update your Secret!`);
+    throw new Error(`❌ Document not found: ${docId}`);
   }
   
   const data = doc.data();
-  console.log('✅ Document Found!');
   
-  // וודא שיש חתימה
-  if (data.signature) {
-      console.log('✅ Signature field exists.');
+  if (!data.signature || !data.keyVersion) {
+     console.warn('⚠️ Warning: Document exists but missing signature/keyVersion metadata.');
   } else {
-      console.warn('⚠️ Warning: Document exists but has no "signature" field.');
+     console.log('✅ Document verified successfully (Signature present).');
   }
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+main().catch(err => { 
+  console.error('❌ Verification failed:', err.message); 
+  process.exit(1); 
+});
