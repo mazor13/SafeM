@@ -1,26 +1,16 @@
 #!/usr/bin/env node
-/**
- * scripts/rotate_kms_key.js
- *
- * Automates KMS Key Rotation:
- * 1. Creates new cryptoKeyVersion
- * 2. Validates it (Sign/Verify test)
- * 3. Updates Cloud Function env var (KMS_KEY_NAME)
- * 4. Verifies system health
- * 5. Rollback on failure
- */
 const { KeyManagementServiceClient } = require('@google-cloud/kms');
 const { execSync } = require('child_process');
 const crypto = require('crypto');
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
 
-// התחביר החדש והתקין לקריאת פרמטרים
 const argv = yargs(hideBin(process.argv))
   .option('project', { type: 'string', demandOption: true })
   .option('keyRing', { type: 'string', demandOption: true })
   .option('key', { type: 'string', demandOption: true })
   .option('functionName', { type: 'string', demandOption: true })
+  .option('bucketName', { type: 'string', demandOption: true }) // הוספנו את הפרמטר הזה
   .option('region', { type: 'string', default: 'us-central1' })
   .option('gcloudPath', { type: 'string', default: 'gcloud' })
   .help()
@@ -29,7 +19,8 @@ const argv = yargs(hideBin(process.argv))
 const kms = new KeyManagementServiceClient();
 
 async function main() {
-  const { project, keyRing, key, functionName, region, gcloudPath: gcloud } = argv;
+  // שולפים את bucketName מהארגומנטים
+  const { project, keyRing, key, functionName, bucketName, region, gcloudPath: gcloud } = argv;
   const parent = `projects/${project}/locations/${region}/keyRings/${keyRing}/cryptoKeys/${key}`;
 
   console.log(`🔄 Starting Rotation for ${functionName}...`);
@@ -47,7 +38,6 @@ async function main() {
   const testPayload = Buffer.from('rotation-test-' + Date.now());
   const digest = crypto.createHash('sha256').update(testPayload).digest();
 
-  // Wait a bit for key to be ready
   await new Promise(r => setTimeout(r, 2000));
 
   const [signResp] = await kms.asymmetricSign({
@@ -94,7 +84,10 @@ async function main() {
   try {
     // Wait for traffic shift
     await new Promise(r => setTimeout(r, 10000)); 
-    execSync(`node scripts/verify_document.js --docId=${process.env.SMOKE_DOC_ID} --project=${project}`, { stdio: 'inherit', env: process.env });
+    
+    // כאן התיקון הגדול: אנחנו מעבירים את bucketName לסקריפט האימות
+    execSync(`node scripts/verify_document.js --docId=${process.env.SMOKE_DOC_ID} --project=${project} --bucketName=${bucketName}`, { stdio: 'inherit', env: process.env });
+    
     console.log('✅ Rotation Complete Success!');
   } catch (err) {
     console.error('❌ Post-update verification FAILED. Rolling back...');
