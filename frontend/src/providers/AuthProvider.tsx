@@ -1,61 +1,76 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  User, 
-  onAuthStateChanged,
-  getIdTokenResult 
-} from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore'; // הוספנו
-import { auth, firestore } from '../firebase'; // הוספנו firestore
+import { User as FirebaseUser, onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, firestore } from '../firebase';
+import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
-  role: string | null;
   loading: boolean;
+  logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, role: null, loading: true });
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  logout: async () => {},
+});
 
 export const useAuth = () => useContext(AuthContext);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // 1. שליפת ה-Role
-        const token = await getIdTokenResult(currentUser);
-        const userRole = (token.claims.role as string) || 'inspector'; // ברירת מחדל
-        setRole(userRole);
-
-        // 2. וידוא שהמשתמש קיים בטבלת users (כדי שנוכל לבחור אותו ברשימות)
-        const userDocRef = doc(firestore, 'users', currentUser.uid);
-        const userSnap = await getDoc(userDocRef);
-        
-        // אם המשתמש לא קיים או שאין לו שם מעודכן, נעדכן אותו
-        if (!userSnap.exists()) {
-          await setDoc(userDocRef, {
-            email: currentUser.email,
-            displayName: currentUser.displayName || currentUser.email?.split('@')[0],
-            role: userRole,
-            uid: currentUser.uid,
-            createdAt: new Date()
-          });
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        try {
+          // מנסים למשוך את פרטי המשתמש המלאים מה-Firestore
+          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              firstName: userData.firstName || 'User',
+              lastName: userData.lastName || '',
+              role: userData.role || 'employee',
+              permissions: userData.permissions || [],
+            });
+          } else {
+            // משתמש קיים ב-Auth אבל לא במסד הנתונים (נדיר, אבל אפשרי)
+            setUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              firstName: 'Unknown',
+              lastName: '',
+              role: 'employee',
+              permissions: [],
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setUser(null);
         }
       } else {
-        setRole(null);
+        setUser(null);
       }
       setLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, loading, logout }}>
+      {children}
     </AuthContext.Provider>
   );
 }

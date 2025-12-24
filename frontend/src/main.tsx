@@ -1,17 +1,19 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import ReactDOM from 'react-dom/client';
 import App from './App';
-import { AuthProvider } from './providers/AuthProvider';
-import './styles/globals.css';
+import './index.css';
+import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './providers/AuthProvider'; // הוספנו סוגריים מסולסלים
+import { ClientProvider } from './providers/ClientProvider';
 
-const root = createRoot(document.getElementById('root')!);
-root.render(
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ClientProvider>
+          <App />
+        </ClientProvider>
       </AuthProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

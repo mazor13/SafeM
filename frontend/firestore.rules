@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'super_admin';
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /organizations/{orgId} {
+      allow read: if isSuperAdmin() || (isAuthenticated() && request.auth.token.organizationId == orgId);
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (isAuthenticated() && request.auth.token.organizationId == orgId && request.auth.token.role == 'org_admin');
+      allow delete: if isSuperAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read, write: if isAuthenticated();
+      
+      // *** התיקון: הוספת הרשאה לקולקציית הציוד הפנימית ***
+      match /equipment/{equipmentId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+    
+    match /settings/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /inspections/{inspectionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.auth.token.role == 'super_admin' ||
+        resource.data.inspectorId == request.auth.uid || 
+        true 
+      );
+      allow delete: if isAuthenticated();
+
+      match /items/{itemId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+    
+    match /documents/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /audit_log/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
