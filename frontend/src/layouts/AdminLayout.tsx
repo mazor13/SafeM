@@ -5,11 +5,11 @@ import {
   HomeIcon,
   UsersIcon,
   CubeIcon,
-  ChartBarIcon,
   BanknotesIcon,
   CpuChipIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 export default function AdminLayout() {
@@ -18,6 +18,7 @@ export default function AdminLayout() {
   const navigation = [
     { name: 'מגדל פיקוח', to: '/admin', end: true, icon: HomeIcon },
     { name: 'Cortex BI', to: '/admin/analytics', icon: CpuChipIcon },
+    { name: 'ניהול ידע', to: '/admin/templates', icon: DocumentTextIcon }, // חדש!
     { name: 'פיננסים', to: '/admin/finance', icon: BanknotesIcon },
     { name: 'לקוחות', to: '/admin/clients', icon: UsersIcon },
     { name: 'מוצרים', to: '/admin/products', icon: CubeIcon },
@@ -71,7 +72,6 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-slate-50 relative">
         <Outlet />
       </main>

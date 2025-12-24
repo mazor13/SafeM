@@ -1,67 +1,81 @@
-import { Timestamp } from 'firebase/firestore';
-
-export type Role = 'super_admin' | 'org_admin' | 'safety_manager' | 'employee';
-
-// *** התיקון: הוספת 'training' לרשימה ***
-export type ModuleType = 'safety' | 'laser' | 'fire' | 'training';
+export type Role = 'super_admin' | 'admin' | 'employee' | 'client_user' | 'org_admin' | 'safety_manager';
 
 export interface User {
   id: string;
   email: string;
   firstName: string;
-  lastName: string;
+  lastName?: string;
   role: Role;
-  organizationId: string;
+  permissions?: string[];
+  department?: string;
+  phone?: string;
   avatarUrl?: string;
-  createdAt: Timestamp | Date;
-}
-
-export interface Organization {
-  id: string;
-  name: string;
-  logoUrl?: string;
-  contactEmail?: string;
-  subscriptionStatus: 'active' | 'inactive' | 'trial';
-  maxUsers: number;
-  createdAt: Timestamp | Date;
+  status?: 'active' | 'inactive';
+  lastActive?: Date;
 }
 
 export interface Client {
   id: string;
   name: string;
-  organizationId: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
   logoUrl?: string;
-  contactPerson?: {
-    name: string;
-    email: string;
-    phone: string;
-  };
+  status: 'active' | 'inactive';
+  organizationId?: string; // הוסף כדי לתמוך בציוד
   contractDetails?: {
-    startDate: Timestamp | Date;
-    endDate?: Timestamp | Date;
-    activeModules: ModuleType[];
-    status: 'active' | 'suspended' | 'expired';
-    
-    // שדות ה-SaaS (נשמרים מהעדכון הקודם)
-    planName?: string;       
-    maxUsers?: number;       
-    maxSubClients?: number;  
-    storageLimitGB?: number; 
+    planName: string;
+    startDate: any;
+    endDate: any;
+    maxUsers?: number;       // הוסף
+    activeModules?: string[]; // הוסף
+    status?: 'active' | 'inactive'; // הוסף
   };
-  createdAt: Timestamp | Date;
-  updatedAt?: Timestamp | Date;
 }
 
+// Equipment Types
 export interface Equipment {
   id: string;
   name: string;
-  type: 'laser' | 'fire_extinguisher' | 'machine' | 'other';
-  serialNumber?: string;
+  type: string;
   model?: string;
-  status: 'active' | 'maintenance' | 'retired' | 'storage';
-  nextInspectionDate: Timestamp | Date | string;
-  lastInspectionDate?: Timestamp | Date;
-  organizationId: string;
-  clientId: string;
-  createdAt?: Timestamp | Date;
+  serialNumber?: string;
+  status: 'active' | 'maintenance' | 'broken';
+  purchaseDate?: Date;
+  nextInspectionDate?: Date | string; // גמישות לתאריכים
+  organizationId?: string;
+  location?: string;
+  notes?: string;
+}
+
+export interface ModuleType {
+  id: string;
+  label: string;
+  icon?: any;
+}
+
+// Template System Types
+export interface InspectionTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  category: 'safety' | 'maintenance' | 'audit' | 'general';
+  isGlobal: boolean;
+  sections: TemplateSection[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TemplateSection {
+  id: string;
+  title: string;
+  items: TemplateItem[];
+}
+
+export interface TemplateItem {
+  id: string;
+  text: string;
+  type: 'pass_fail' | 'text' | 'number' | 'photo';
+  required: boolean;
 }

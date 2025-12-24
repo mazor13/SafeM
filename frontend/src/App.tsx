@@ -16,12 +16,13 @@ import Finance from './pages/admin/Finance';
 import ProductManagement from './pages/admin/ProductManagement';
 import Clients from './pages/admin/Clients';
 import AdminSettings from './pages/admin/Settings';
+import Templates from './pages/admin/Templates'; // Import החדש
 
 // Client Pages
 import InspectionsDashboard from './pages/client/InspectionsDashboard';
 import Inspections from './pages/client/Inspections';
 import NewInspection from './pages/client/NewInspection';
-// import ClientSettings from './pages/client/Settings'; // ניצור בהמשך
+import InspectionDetails from './pages/client/InspectionDetails';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -33,7 +34,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
   const { user } = useAuth();
 
-  // Helper to redirect root URL based on role
   const RootRedirect = () => {
     if (!user) return <Navigate to="/login" />;
     return user.role === 'super_admin' ? <Navigate to="/admin" /> : <Navigate to="/client" />;
@@ -47,6 +47,7 @@ export default function App() {
       <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="templates" element={<Templates />} /> {/* Route החדש */}
           <Route path="finance" element={<Finance />} />
           <Route path="products" element={<ProductManagement />} />
           <Route path="clients" element={<Clients />} />
@@ -57,11 +58,10 @@ export default function App() {
       <Route path="/client" element={<ProtectedRoute><ClientLayout /></ProtectedRoute>}>
           <Route index element={<InspectionsDashboard />} />
           <Route path="inspections" element={<Inspections />} />
+          <Route path="inspections/:id" element={<InspectionDetails />} />
           <Route path="new-inspection" element={<NewInspection />} />
-          {/* <Route path="settings" element={<ClientSettings />} /> */}
       </Route>
 
-      {/* Root Redirect */}
       <Route path="/" element={<RootRedirect />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
