@@ -4,72 +4,69 @@ import { useAuth } from '../providers/AuthProvider';
 import {
   HomeIcon,
   ClipboardDocumentCheckIcon,
-  PlusCircleIcon,
-  Cog6ToothIcon,
-  ArrowRightOnRectangleIcon
+  DocumentDuplicateIcon,
+  UserGroupIcon,
+  ArrowRightOnRectangleIcon,
+  AcademicCapIcon
 } from '@heroicons/react/24/outline';
 
 export default function ClientLayout() {
   const { user, logout } = useAuth();
 
   const navigation = [
-    { name: 'לוח בקרה', to: '/client', end: true, icon: HomeIcon },
-    { name: 'כל הבדיקות', to: '/client/inspections', icon: ClipboardDocumentCheckIcon },
-    { name: 'בדיקה חדשה', to: '/client/new-inspection', icon: PlusCircleIcon },
-    { name: 'הגדרות', to: '/client/settings', icon: Cog6ToothIcon },
+    { name: 'דאשבורד', to: '/client', end: true, icon: HomeIcon },
+    { name: 'הבדיקות שלי', to: '/client/inspections', icon: ClipboardDocumentCheckIcon },
+    { name: 'ניהול ידע (תבניות)', to: '/client/templates', icon: DocumentDuplicateIcon }, // הגישה החדשה
+    { name: 'צוות עובדים', to: '/client/personnel', icon: UserGroupIcon },
+    { name: 'לומדות והדרכות', to: '/client/training', icon: AcademicCapIcon },
   ];
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <aside className="w-64 bg-white text-gray-800 flex flex-col flex-shrink-0 border-l border-gray-200 shadow-sm z-20">
-        <div className="h-16 flex items-center justify-center border-b border-gray-100">
-           <h1 className="text-xl font-bold text-indigo-600 tracking-tight">
-             Client Portal
-           </h1>
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-l border-gray-200 flex flex-col shadow-sm">
+        <div className="h-16 flex items-center px-6 border-b border-gray-100">
+           <span className="text-xl font-bold text-indigo-600 tracking-tight text-right w-full">PORTAL</span>
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
           {navigation.map((item) => (
             <NavLink
               key={item.name}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `group flex items-center px-3 py-3 text-sm font-medium rounded-md transition-all duration-200 ${
+                `group flex items-center px-3 py-3 text-sm font-medium rounded-xl transition-all ${
                   isActive
-                    ? 'bg-indigo-50 text-indigo-700'
+                    ? 'bg-indigo-50 text-indigo-700 shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`
               }
             >
-              {({ isActive }) => (
-                <>
-                  <item.icon className={`ml-3 flex-shrink-0 h-6 w-6 ${isActive ? 'text-indigo-600' : 'text-gray-400'}`} aria-hidden="true" />
-                  {item.name}
-                </>
-              )}
+              <item.icon className="ml-3 h-6 w-6" />
+              {item.name}
             </NavLink>
           ))}
         </nav>
 
         <div className="p-4 border-t border-gray-100">
-           <div className="flex items-center mb-3">
-             <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
-               {user?.firstName?.[0] || 'U'}
+          <div className="flex items-center mb-4 px-2">
+             <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs">
+               {user?.firstName?.[0]}
              </div>
-             <div className="mr-3 overflow-hidden">
-               <p className="text-sm font-medium text-gray-900 truncate">{user?.firstName}</p>
+             <div className="mr-3">
+               <p className="text-xs font-bold text-gray-900">{user?.firstName}</p>
+               <p className="text-[10px] text-gray-500 uppercase tracking-wider">{user?.role}</p>
              </div>
           </div>
-          <button onClick={() => logout()} className="w-full flex items-center text-sm text-gray-500 hover:text-red-600">
-            <ArrowRightOnRectangleIcon className="h-5 w-5 ml-2" /> יציאה
+          <button onClick={() => logout()} className="w-full flex items-center text-xs text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors">
+            <ArrowRightOnRectangleIcon className="h-4 w-4 ml-2" /> התנתק
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-6xl mx-auto">
-           <Outlet />
-        </div>
+
+      <main className="flex-1 overflow-y-auto bg-slate-50 relative">
+        <Outlet />
       </main>
     </div>
   );

@@ -1,69 +1,69 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './providers/AuthProvider';
 
-// Layouts
+// --- Layouts ---
 import AdminLayout from './layouts/AdminLayout';
-import ClientLayout from './layouts/ClientLayout';
 
-// Auth
+// --- Pages (Admin) ---
 import Login from './pages/auth/Login';
+import CommandCenter from "./pages/admin/CommandCenter";
+import DashboardBI from "./pages/admin/DashboardBI";
+import CreateClient from './pages/admin/CreateClient';
+import AuditLedger from './pages/admin/AuditLedger';
+import FinancialDashboard from "./pages/admin/FinancialDashboard";
+import BrandingSettings from "./pages/admin/BrandingSettings";
+import CloudHub from "./pages/admin/CloudHub";
+import RuleBuilder from "./pages/admin/RuleBuilder";
+import InfrastructureSettings from './pages/admin/InfrastructureSettings';
 
-// Admin Pages
-import SuperAdminDashboard from './pages/admin/SuperAdminDashboard';
-import Analytics from './pages/admin/Analytics';
-import Finance from './pages/admin/Finance';
-import ProductManagement from './pages/admin/ProductManagement';
+// --- Missing Pages (Adding them now) ---
 import Clients from './pages/admin/Clients';
-import AdminSettings from './pages/admin/Settings';
-import Templates from './pages/admin/Templates'; // Import החדש
+import ProductManagement from './pages/admin/ProductManagement';
+import Settings from './pages/admin/Settings';
+import Templates from './pages/admin/Templates'; // ניהול ידע
 
-// Client Pages
-import InspectionsDashboard from './pages/client/InspectionsDashboard';
-import Inspections from './pages/client/Inspections';
-import NewInspection from './pages/client/NewInspection';
-import InspectionDetails from './pages/client/InspectionDetails';
+// --- Components ---
+import ImpersonationBanner from './components/admin/ImpersonationBanner';
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="h-screen flex items-center justify-center text-gray-500">טוען נתונים...</div>;
-  if (!user) return <Navigate to="/login" />;
-  return <>{children}</>;
-};
-
-export default function App() {
-  const { user } = useAuth();
-
-  const RootRedirect = () => {
-    if (!user) return <Navigate to="/login" />;
-    return user.role === 'super_admin' ? <Navigate to="/admin" /> : <Navigate to="/client" />;
-  };
-
+function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <div className="min-h-screen bg-slate-50 text-right font-sans" dir="rtl">
+      <ImpersonationBanner />
 
-      {/* === ADMIN AREA === */}
-      <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<SuperAdminDashboard />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="templates" element={<Templates />} /> {/* Route החדש */}
-          <Route path="finance" element={<Finance />} />
-          <Route path="products" element={<ProductManagement />} />
-          <Route path="clients" element={<Clients />} />
-          <Route path="settings" element={<AdminSettings />} />
-      </Route>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
 
-      {/* === CLIENT AREA === */}
-      <Route path="/client" element={<ProtectedRoute><ClientLayout /></ProtectedRoute>}>
-          <Route index element={<InspectionsDashboard />} />
-          <Route path="inspections" element={<Inspections />} />
-          <Route path="inspections/:id" element={<InspectionDetails />} />
-          <Route path="new-inspection" element={<NewInspection />} />
-      </Route>
+        {/* Admin Protected Routes */}
+        <Route path="/admin" element={<AdminLayout />}>
+            
+            {/* Main Hub */}
+            <Route index element={<CommandCenter />} />
+            
+            {/* Core Modules */}
+            <Route path="dashboard-bi" element={<DashboardBI />} />
+            <Route path="finance" element={<FinancialDashboard />} />
+            <Route path="branding" element={<BrandingSettings />} />
+            <Route path="cloud-hub" element={<CloudHub />} />
+            <Route path="audit" element={<AuditLedger />} />
+            
+            {/* Operational Modules */}
+            <Route path="clients" element={<Clients />} />
+            <Route path="create-client" element={<CreateClient />} />
+            <Route path="products" element={<ProductManagement />} />
+            <Route path="templates" element={<Templates />} />
+            <Route path="rules" element={<RuleBuilder />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="infrastructure/:tenantId" element={<InfrastructureSettings />} />
+            
+        </Route>
 
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </div>
   );
 }
+
+export default App;

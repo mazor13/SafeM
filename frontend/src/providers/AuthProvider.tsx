@@ -1,58 +1,47 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User as FirebaseUser, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  User as FirebaseUser 
+} from 'firebase/auth';
 import { auth, firestore } from '../firebase';
-import { User } from '../types';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   loading: boolean;
+  login: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  logout: async () => {},
-});
+const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export const useAuth = () => useContext(AuthContext);
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Fetch extra user details from Firestore (Role, Name)
         try {
-          // מנסים למשוך את פרטי המשתמש המלאים מה-Firestore
-          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
+            const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+            const userData = userDoc.exists() ? userDoc.data() : {};
+            
             setUser({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
               firstName: userData.firstName || 'User',
-              lastName: userData.lastName || '',
-              role: userData.role || 'employee',
-              permissions: userData.permissions || [],
+              role: userData.role || 'viewer',
+              ...userData
             });
-          } else {
-            // משתמש קיים ב-Auth אבל לא במסד הנתונים (נדיר, אבל אפשרי)
-            setUser({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              firstName: 'Unknown',
-              lastName: '',
-              role: 'employee',
-              permissions: [],
-            });
-          }
         } catch (error) {
-          console.error("Error fetching user data:", error);
-          setUser(null);
+            console.error("Error fetching user data:", error);
+            // Fallback if DB fails
+            setUser({ uid: firebaseUser.uid, email: firebaseUser.email, firstName: 'Admin' });
         }
       } else {
         setUser(null);
@@ -60,17 +49,20 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
+
+  const login = async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
 
   const logout = async () => {
     await signOut(auth);
-    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 }
