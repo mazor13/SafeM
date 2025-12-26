@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { firestore } from '../firebase';
 import { DollarSign, Activity, Server, AlertTriangle } from 'lucide-react';
 
 // --- Types ---
@@ -25,7 +27,6 @@ export interface FinancialDataPoint {
   churn: number;
 }
 
-// --- The Hook ---
 export const useAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState<KPI[]>([]);
@@ -33,43 +34,93 @@ export const useAnalytics = () => {
   const [financialData, setFinancialData] = useState<FinancialDataPoint[]>([]);
 
   useEffect(() => {
-    // Simulating API Call to Backend
-    const fetchAnalytics = async () => {
+    const fetchRealData = async () => {
       setLoading(true);
-      
-      // Artificial Delay (to show loading skeletons)
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      try {
+        // 1. שליפת כל הלקוחות (Tenants)
+        const tenantsRef = collection(firestore, 'tenants');
+        const tenantsSnap = await getDocs(tenantsRef);
+        
+        const totalClients = tenantsSnap.size;
+        let activeClients = 0;
+        let highRiskCount = 0;
+        
+        // עיבוד נתונים בסיסי
+        const risks: ChurnRisk[] = [];
+        
+        tenantsSnap.forEach(doc => {
+            const data = doc.data();
+            // בדיקת סטטוס
+            if (data.status === 'active') activeClients++;
+            
+            // לוגיקת Churn פשוטה (אם אין שדה lastActive, נניח שהכל תקין כרגע)
+            // בעתיד נחבר את זה ללוג התחברויות אמיתי
+            if (data.status === 'suspended' || data.healthScore < 50) {
+                highRiskCount++;
+                risks.push({
+                    id: doc.id,
+                    clientName: data.name || 'לקוח ללא שם',
+                    dropRate: 100 - (data.healthScore || 0),
+                    lastActive: 'לא ידוע',
+                    riskLevel: 'high'
+                });
+            }
+        });
 
-      // 1. Mock KPIs
-      setKpis([
-        { id: '1', label: 'MRR (הכנסה חודשית)', value: '₪142,500', trend: 12.5, status: 'healthy', icon: DollarSign },
-        { id: '2', label: 'דוחות שנוצרו (היום)', value: '843', trend: 5.2, status: 'healthy', icon: Activity },
-        { id: '3', label: 'שרתים פעילים', value: '99.98%', trend: 0, status: 'healthy', icon: Server },
-        { id: '4', label: 'חובות בסיכון', value: '₪12,200', trend: -2.4, status: 'warning', icon: AlertTriangle },
-      ]);
+        // 2. חישוב KPIs (מבוסס אמת)
+        setKpis([
+          { 
+            id: '1', 
+            label: 'MRR (מוערך)', 
+            value: `₪${activeClients * 500}`, // הנחה זמנית: 500 ש"ח ללקוח
+            trend: 0, 
+            status: activeClients > 0 ? 'healthy' : 'warning', 
+            icon: DollarSign 
+          },
+          { 
+            id: '2', 
+            label: 'לקוחות פעילים', 
+            value: activeClients.toString(), 
+            trend: 0, 
+            status: activeClients > 0 ? 'healthy' : 'warning', 
+            icon: Activity 
+          },
+          { 
+            id: '3', 
+            label: 'שרתים מחוברים', 
+            value: '100%', // כרגע אין לנו ניטור שרתים אמיתי
+            trend: 0, 
+            status: 'healthy', 
+            icon: Server 
+          },
+          { 
+            id: '4', 
+            label: 'לקוחות בסיכון', 
+            value: highRiskCount.toString(), 
+            trend: 0, 
+            status: highRiskCount === 0 ? 'healthy' : 'critical', 
+            icon: AlertTriangle 
+          },
+        ]);
 
-      // 2. Mock Churn Risks (AI Prediction Logic)
-      setChurnRisks([
-        { id: 'c1', clientName: 'דניה סיבוס - מחוז צפון', dropRate: 42, lastActive: '12 ימים', riskLevel: 'high' },
-        { id: 'c2', clientName: 'מפעלי ים המלח', dropRate: 28, lastActive: '5 ימים', riskLevel: 'medium' },
-        { id: 'c3', clientName: 'אלקטרה תשתיות', dropRate: 31, lastActive: '8 ימים', riskLevel: 'high' },
-      ]);
+        setChurnRisks(risks);
 
-      // 3. Mock Financial Graph
-      setFinancialData([
-        { name: 'Jan', mrr: 4000, churn: 240 },
-        { name: 'Feb', mrr: 3000, churn: 139 },
-        { name: 'Mar', mrr: 2000, churn: 980 },
-        { name: 'Apr', mrr: 2780, churn: 390 },
-        { name: 'May', mrr: 1890, churn: 480 },
-        { name: 'Jun', mrr: 2390, churn: 380 },
-        { name: 'Jul', mrr: 3490, churn: 430 },
-      ]);
+        // 3. גרף פיננסי
+        // מכיוון שאין לנו היסטוריה, נציג גרף "שטוח" או ריק כדי לא להטעות
+        // בעתיד נשלוף את זה מקולקציית 'invoices'
+        setFinancialData([
+            { name: 'Start', mrr: 0, churn: 0 },
+            { name: 'Now', mrr: activeClients * 500, churn: 0 }
+        ]);
 
-      setLoading(false);
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchAnalytics();
+    fetchRealData();
   }, []);
 
   return { loading, kpis, churnRisks, financialData };
