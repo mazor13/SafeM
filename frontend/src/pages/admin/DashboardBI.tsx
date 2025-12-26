@@ -1,33 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  BarChart, Bar, Cell 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { TrendingUp, Users, Activity, AlertTriangle, DollarSign, Cpu, Server, Radio } from 'lucide-react';
+import { TrendingUp, Activity, AlertTriangle, Cpu, Radio } from 'lucide-react';
+import { useAnalytics } from '../../hooks/useAnalytics'; // Import the brain
 
-// --- Types Local to Dashboard ---
-interface KPI {
-  label: string;
-  value: string;
-  trend: number;
-  status: 'healthy' | 'warning' | 'critical';
-  icon: any;
-}
-
-interface ChurnRisk {
-  clientName: string;
-  dropRate: number; // Percentage drop in usage
-  lastActive: string;
-  riskLevel: 'high' | 'medium';
-}
-
-// --- Enhanced Glassmorphism Components ---
-
+// --- Glass Components ---
 const GlassCard = ({ children, className = '', title, action }: { children: React.ReactNode, className?: string, title?: string, action?: any }) => (
   <div className={`relative overflow-hidden rounded-3xl border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-2xl transition-all duration-500 hover:bg-slate-800/40 group ${className}`}>
-    {/* Shine Effect Overlay */}
     <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-    
     {(title || action) && (
       <div className="flex justify-between items-center p-6 border-b border-white/5 relative z-10">
         {title && <h3 className="text-lg font-bold text-white tracking-wide flex items-center gap-3">{title}</h3>}
@@ -40,11 +21,10 @@ const GlassCard = ({ children, className = '', title, action }: { children: Reac
 
 const NeonButton = ({ label, color = 'blue', onClick }: { label: string, color?: 'blue' | 'purple' | 'red', onClick?: () => void }) => {
   const colors = {
-    blue: 'border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.15)] hover:shadow-[0_0_25px_rgba(34,211,238,0.3)]',
-    purple: 'border-fuchsia-500 text-fuchsia-400 hover:bg-fuchsia-500/10 shadow-[0_0_15px_rgba(232,121,249,0.15)] hover:shadow-[0_0_25px_rgba(232,121,249,0.3)]',
-    red: 'border-rose-500 text-rose-400 hover:bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.15)] hover:shadow-[0_0_25px_rgba(244,63,94,0.3)]',
+    blue: 'border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 shadow-[0_0_15px_rgba(34,211,238,0.15)]',
+    purple: 'border-fuchsia-500 text-fuchsia-400 hover:bg-fuchsia-500/10 shadow-[0_0_15px_rgba(232,121,249,0.15)]',
+    red: 'border-rose-500 text-rose-400 hover:bg-rose-500/10 shadow-[0_0_15px_rgba(244,63,94,0.15)]',
   };
-  
   return (
     <button onClick={onClick} className={`px-5 py-2 rounded-full border text-xs font-bold transition-all duration-300 uppercase tracking-wider ${colors[color]}`}>
       {label}
@@ -52,40 +32,9 @@ const NeonButton = ({ label, color = 'blue', onClick }: { label: string, color?:
   );
 };
 
-// --- Mock Data ---
-const financialData = [
-  { name: 'Jan', mrr: 4000, churn: 240 },
-  { name: 'Feb', mrr: 3000, churn: 139 },
-  { name: 'Mar', mrr: 2000, churn: 980 },
-  { name: 'Apr', mrr: 2780, churn: 390 },
-  { name: 'May', mrr: 1890, churn: 480 },
-  { name: 'Jun', mrr: 2390, churn: 380 },
-  { name: 'Jul', mrr: 3490, churn: 430 },
-];
-
 export default function DashboardBI() {
-  const [loading, setLoading] = useState(true);
-  const [churnRisks, setChurnRisks] = useState<ChurnRisk[]>([]);
-  
-  // KPI Data
-  const stats: KPI[] = [
-    { label: 'MRR (הכנסה חודשית)', value: '₪142,500', trend: 12.5, status: 'healthy', icon: DollarSign },
-    { label: 'דוחות שנוצרו (היום)', value: '843', trend: 5.2, status: 'healthy', icon: Activity },
-    { label: 'שרתים פעילים', value: '99.98%', trend: 0, status: 'healthy', icon: Server },
-    { label: 'חובות בסיכון', value: '₪12,200', trend: -2.4, status: 'warning', icon: AlertTriangle },
-  ];
-
-  useEffect(() => {
-    // Simulating heavy AI calculation
-    setTimeout(() => {
-      setChurnRisks([
-        { clientName: 'דניה סיבוס - מחוז צפון', dropRate: 42, lastActive: '12 ימים', riskLevel: 'high' },
-        { clientName: 'מפעלי ים המלח', dropRate: 28, lastActive: '5 ימים', riskLevel: 'medium' },
-        { clientName: 'אלקטרה תשתיות', dropRate: 31, lastActive: '8 ימים', riskLevel: 'high' },
-      ]);
-      setLoading(false);
-    }, 1200);
-  }, []);
+  // חיבור ל-Hook
+  const { loading, kpis, churnRisks, financialData } = useAnalytics();
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-8 font-sans selection:bg-indigo-500/30 overflow-hidden relative" dir="rtl">
@@ -94,7 +43,7 @@ export default function DashboardBI() {
       <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-indigo-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="fixed bottom-0 right-0 w-[500px] h-[500px] bg-cyan-600/10 blur-[120px] rounded-full pointer-events-none"></div>
 
-      {/* --- Global Anomaly Banner --- */}
+      {/* Anomaly Banner */}
       <div className="mb-8 animate-slideDown relative z-20">
         <div className="bg-gradient-to-l from-rose-900/40 to-rose-600/10 border border-rose-500/20 rounded-xl p-4 flex items-center justify-between backdrop-blur-md shadow-[0_0_20px_rgba(244,63,94,0.1)]">
           <div className="flex items-center gap-4">
@@ -113,7 +62,7 @@ export default function DashboardBI() {
         </div>
       </div>
 
-      {/* --- Header --- */}
+      {/* Header */}
       <header className="flex justify-between items-end mb-10 relative z-20">
         <div>
           <h1 className="text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-300 to-cyan-300 mb-2 tracking-tight">
@@ -121,7 +70,7 @@ export default function DashboardBI() {
           </h1>
           <p className="text-slate-400 text-sm font-medium tracking-wide flex items-center gap-2">
             <Cpu size={14} className="text-indigo-400" />
-            מגדל הפיקוח הראשי • מנוע AI פעיל • גרסה 5.0
+            מגדל הפיקוח הראשי • מנוע AI פעיל • גרסה 5.2
           </p>
         </div>
         
@@ -135,13 +84,13 @@ export default function DashboardBI() {
         </div>
       </header>
 
-      {/* --- Main Grid --- */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
 
-        {/* 1. KPIs Row */}
+        {/* 1. KPIs */}
         <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, idx) => (
-            <GlassCard key={idx} className="group hover:-translate-y-1 !bg-slate-800/30">
+          {kpis.map((stat) => (
+            <GlassCard key={stat.id} className="group hover:-translate-y-1 !bg-slate-800/30">
               <div className="flex justify-between items-start mb-4">
                 <div className={`p-3 rounded-xl ${stat.status === 'healthy' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
                   <stat.icon size={20} />
@@ -155,13 +104,13 @@ export default function DashboardBI() {
               </div>
               <div className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">{stat.label}</div>
               <div className="text-3xl font-black text-white font-mono group-hover:text-indigo-200 transition-colors tracking-tight">
-                {stat.value}
+                {loading ? <div className="h-8 w-24 bg-slate-700/50 rounded animate-pulse"></div> : stat.value}
               </div>
             </GlassCard>
           ))}
         </div>
 
-        {/* 2. Global Health Radar (Large Chart) */}
+        {/* 2. Global Health Radar */}
         <div className="lg:col-span-8">
             <GlassCard 
               title="🧬 Global Health Radar" 
@@ -169,27 +118,31 @@ export default function DashboardBI() {
               action={<div className="flex items-center gap-2 text-xs font-mono text-slate-400"><Radio size={14} className="animate-pulse text-indigo-400" /> Live Monitoring</div>}
             >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 h-full">
-                    {/* Main Chart Area */}
+                    {/* Chart */}
                     <div className="md:col-span-2 flex flex-col h-full">
                          <div className="flex-1 w-full min-h-[250px] relative">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart data={financialData}>
-                                <defs>
-                                  <linearGradient id="colorVis" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                                <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
-                                <Tooltip 
-                                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
-                                  itemStyle={{ color: '#818cf8' }}
-                                />
-                                <Area type="monotone" dataKey="mrr" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorVis)" />
-                              </AreaChart>
-                            </ResponsiveContainer>
+                            {loading ? (
+                                <div className="w-full h-full bg-slate-800/20 animate-pulse rounded-xl"></div>
+                            ) : (
+                                <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={financialData}>
+                                    <defs>
+                                    <linearGradient id="colorVis" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                    </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                                    <Tooltip 
+                                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
+                                    itemStyle={{ color: '#818cf8' }}
+                                    />
+                                    <Area type="monotone" dataKey="mrr" stroke="#818cf8" strokeWidth={3} fillOpacity={1} fill="url(#colorVis)" />
+                                </AreaChart>
+                                </ResponsiveContainer>
+                            )}
                          </div>
                     </div>
                     
@@ -229,12 +182,12 @@ export default function DashboardBI() {
             </GlassCard>
         </div>
 
-        {/* 3. AI Churn Predictor (Right) */}
+        {/* 3. AI Churn Predictor */}
         <div className="lg:col-span-4">
             <GlassCard 
                 title="🔮 AI Churn Predictor" 
                 className="h-full !bg-gradient-to-b from-indigo-900/20 to-slate-900/40 border-indigo-500/20"
-                action={<span className="text-[10px] bg-indigo-600 px-2 py-0.5 rounded text-white font-bold shadow-lg shadow-indigo-500/30">BETA v2.1</span>}
+                action={<span className="text-[10px] bg-indigo-600 px-2 py-0.5 rounded text-white font-bold shadow-lg shadow-indigo-500/30">BETA</span>}
             >
                 {loading ? (
                     <div className="flex flex-col items-center justify-center h-64 space-y-4">
@@ -242,7 +195,7 @@ export default function DashboardBI() {
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
                             <div className="absolute inset-0 rounded-full h-10 w-10 border-t-2 border-cyan-400 opacity-30 animate-ping"></div>
                         </div>
-                        <span className="text-xs text-indigo-300 animate-pulse font-mono">מעבד נתוני שימוש (TensorFlow)...</span>
+                        <span className="text-xs text-indigo-300 animate-pulse font-mono">מנתח נתוני שימוש...</span>
                     </div>
                 ) : (
                     <div className="space-y-4 h-full flex flex-col">
@@ -251,8 +204,8 @@ export default function DashboardBI() {
                         </p>
 
                         <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
-                            {churnRisks.map((risk, i) => (
-                                <div key={i} className="bg-rose-500/5 border border-rose-500/10 p-3 rounded-xl flex justify-between items-center group cursor-pointer hover:bg-rose-500/10 hover:border-rose-500/30 transition-all">
+                            {churnRisks.map((risk) => (
+                                <div key={risk.id} className="bg-rose-500/5 border border-rose-500/10 p-3 rounded-xl flex justify-between items-center group cursor-pointer hover:bg-rose-500/10 hover:border-rose-500/30 transition-all">
                                     <div>
                                         <h5 className="font-bold text-rose-200 text-sm group-hover:text-white transition-colors">{risk.clientName}</h5>
                                         <div className="text-[10px] text-rose-300/60 mt-1 flex gap-3">
