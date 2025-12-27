@@ -67,7 +67,6 @@ export default function Client360() {
       limit(5)
     );
     
-    // הוספנו טיפול בשגיאות כדי לא לתקוע את הדף אם אין אינדקס
     const unsubLogs = onSnapshot(q, (snapshot) => {
       setLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LogEntry)));
     }, (error) => {
@@ -93,7 +92,8 @@ export default function Client360() {
       const rows = snapshot.docs.map(doc => {
         const data = doc.data();
         const dateObj = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
-        // Format details for CSV to avoid raw JSON look
+        
+        // Format details for CSV
         let detailsStr = '-';
         if (data.details) {
             detailsStr = Object.entries(data.details)
@@ -127,7 +127,7 @@ export default function Client360() {
 
     } catch (err) {
       console.error("Export failed:", err);
-      alert("שגיאה בייצוא הלוגים. וודא שלחצת על הקישור בקונסול ליצירת האינדקס.");
+      alert("שגיאה בייצוא הלוגים.");
     } finally {
       setIsExporting(false);
     }
@@ -166,7 +166,7 @@ export default function Client360() {
     }
   };
 
-  // Helper to format details nicely in UI
+  // Helper to format details nicely in UI (Badges instead of JSON)
   const formatDetails = (details: any) => {
     if (!details) return null;
     return Object.entries(details).map(([key, value]) => (
