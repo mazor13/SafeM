@@ -7,6 +7,7 @@ import {
   Database, Activity, AlertCircle, Settings, CreditCard, Lock, ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import UsersTab from '../../components/admin/UsersTab';
 
 interface ClientData {
   id: string;
@@ -27,7 +28,7 @@ export default function Client360() {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const [client, setClient] = useState<ClientData | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'infra' | 'billing' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'infra' | 'billing'>('overview');
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
@@ -55,7 +56,6 @@ export default function Client360() {
           lastUpdated: serverTimestamp()
         });
         
-        // Audit Log Recording
         await addDoc(collection(firestore, 'audit_logs'), {
             action: 'CHANGE_STATUS',
             targetId: clientId,
@@ -81,7 +81,6 @@ export default function Client360() {
     </div>
   );
 
-  // Safe Math for Progress Bars
   const usagePercent = client.usersLimit > 0 
     ? Math.min(((client.usersCount || 0) / client.usersLimit) * 100, 100) 
     : 0;
@@ -118,7 +117,7 @@ export default function Client360() {
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-             <div className="text-left ml-4 hidden lg:block">
+            <div className="text-left ml-4 hidden lg:block">
               <p className="text-[10px] text-slate-500 uppercase font-bold">Health Score</p>
               <div className="flex items-center gap-2">
                 <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -149,14 +148,12 @@ export default function Client360() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 pb-12">
-        
-        {/* TABS */}
         <div className="flex gap-1 bg-slate-900/50 p-1 rounded-2xl border border-white/5 w-fit mb-8 overflow-x-auto max-w-full">
           {[
             { id: 'overview', label: 'סקירה כללית', icon: Activity },
+            { id: 'users', label: 'ניהול משתמשים', icon: Users },
             { id: 'infra', label: 'תשתית ו-BYOS', icon: Database },
-            { id: 'billing', label: 'פיננסים וגבייה', icon: CreditCard },
-            { id: 'security', label: 'אבטחה והרשאות', icon: ShieldCheck }
+            { id: 'billing', label: 'פיננסים', icon: CreditCard }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -173,7 +170,6 @@ export default function Client360() {
           ))}
         </div>
 
-        {/* CONTENT */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -184,8 +180,6 @@ export default function Client360() {
           >
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Usage Card */}
                 <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm hover:border-white/10 transition-colors">
                   <h3 className="text-sm font-bold text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-widest">
                     <Users size={14} /> ניצול משאבים
@@ -212,7 +206,6 @@ export default function Client360() {
                   </div>
                 </div>
 
-                {/* Modules Card */}
                 <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm hover:border-white/10 transition-colors">
                   <h3 className="text-sm font-bold text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-widest">
                     <Settings size={14} /> מודולים פעילים
@@ -227,7 +220,6 @@ export default function Client360() {
                   </div>
                 </div>
 
-                {/* Info Card */}
                 <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 text-indigo-500/10 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
                     <ShieldCheck size={120} />
@@ -248,7 +240,16 @@ export default function Client360() {
               </div>
             )}
 
-            {activeTab !== 'overview' && (
+            {activeTab === 'users' && (
+              <UsersTab 
+                clientId={client.id} 
+                clientName={client.name} 
+                limit={client.usersLimit}
+                currentCount={client.usersCount || 0}
+              />
+            )}
+
+            {(activeTab === 'infra' || activeTab === 'billing') && (
                 <div className="flex flex-col items-center justify-center p-20 text-center border-2 border-dashed border-white/5 rounded-3xl bg-slate-900/20">
                     <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-500">
                         <Settings size={32} />
