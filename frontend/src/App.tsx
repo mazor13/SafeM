@@ -1,68 +1,44 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-
-// --- Layouts ---
-import AdminLayout from './layouts/AdminLayout';
-
-// --- Pages (Admin) ---
+import { Routes, Route, Navigate } from 'react-router-dom'; // הורדנו את BrowserRouter
 import Login from './pages/auth/Login';
-import CommandCenter from "./pages/admin/CommandCenter";
-import DashboardBI from "./pages/admin/DashboardBI";
-import CreateClient from './pages/admin/CreateClient';
-import AuditLedger from './pages/admin/AuditLedger';
-import FinancialDashboard from "./pages/admin/FinancialDashboard";
-import BrandingSettings from "./pages/admin/BrandingSettings";
-import CloudHub from "./pages/admin/CloudHub";
-import RuleBuilder from "./pages/admin/RuleBuilder";
-import InfrastructureSettings from './pages/admin/InfrastructureSettings';
+import AdminLayout from './layouts/AdminLayout';
+import AuthProvider from './providers/AuthProvider';
 
-// --- Missing Pages (Adding them now) ---
+// Admin Pages
+import DashboardBI from './pages/admin/DashboardBI';
+import CommandCenter from './pages/admin/CommandCenter';
 import Clients from './pages/admin/Clients';
-import ProductManagement from './pages/admin/ProductManagement';
-import Settings from './pages/admin/Settings';
-import Templates from './pages/admin/Templates'; // ניהול ידע
-
-// --- Components ---
-import ImpersonationBanner from './components/admin/ImpersonationBanner';
+import CreateClient from './pages/admin/CreateClient';
+import Client360 from './pages/admin/Client360';
 
 function App() {
   return (
-    <div className="min-h-screen bg-slate-50 text-right font-sans" dir="rtl">
-      <ImpersonationBanner />
-
+    <AuthProvider>
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
-
-        {/* Admin Protected Routes */}
+        
+        {/* Protected Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
-            
-            {/* Main Hub */}
-            <Route index element={<CommandCenter />} />
-            
-            {/* Core Modules */}
-            <Route path="dashboard-bi" element={<DashboardBI />} />
-            <Route path="finance" element={<FinancialDashboard />} />
-            <Route path="branding" element={<BrandingSettings />} />
-            <Route path="cloud-hub" element={<CloudHub />} />
-            <Route path="audit" element={<AuditLedger />} />
-            
-            {/* Operational Modules */}
-            <Route path="clients" element={<Clients />} />
-            <Route path="create-client" element={<CreateClient />} />
-            <Route path="products" element={<ProductManagement />} />
-            <Route path="templates" element={<Templates />} />
-            <Route path="rules" element={<RuleBuilder />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="infrastructure/:tenantId" element={<InfrastructureSettings />} />
-            
+          <Route index element={<CommandCenter />} />
+          <Route path="dashboard-bi" element={<DashboardBI />} />
+          
+          {/* Clients Module */}
+          <Route path="clients" element={<Clients />} />
+          <Route path="clients/:clientId" element={<Client360 />} />
+          <Route path="create-client" element={<CreateClient />} />
+          
+          {/* Placeholders */}
+          <Route path="templates" element={<div className="p-10 text-slate-400">Knowledge Base (Coming Soon)</div>} />
+          <Route path="finance" element={<div className="p-10 text-slate-400">Finance Module (Coming Soon)</div>} />
+          <Route path="products" element={<div className="p-10 text-slate-400">Products Module (Coming Soon)</div>} />
+          <Route path="settings" element={<div className="p-10 text-slate-400">System Settings (Coming Soon)</div>} />
         </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
-    </div>
+    </AuthProvider>
   );
 }
 
