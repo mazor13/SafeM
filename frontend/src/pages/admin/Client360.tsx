@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot, updateDoc, serverTimestamp, addDoc, collection } from 'firebase/firestore';
+import { 
+  doc, onSnapshot, updateDoc, serverTimestamp, addDoc, collection, 
+  query, where, orderBy, limit, getDocs 
+} from 'firebase/firestore';
 import { firestore } from '../../firebase';
 import { 
   ArrowRight, ShieldCheck, Zap, Globe, Users, 
-  Database, Activity, AlertCircle, Settings, CreditCard, Lock, ExternalLink
+  Database, Activity, AlertCircle, Settings, CreditCard, Lock, ExternalLink,
+  History, Clock, Download, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import UsersTab from '../../components/admin/UsersTab';
@@ -24,13 +28,25 @@ interface ClientData {
   contactPerson: string;
 }
 
+interface LogEntry {
+  id: string;
+  action: string;
+  targetName: string;
+  performedBy: string;
+  timestamp: any;
+  details?: any;
+}
+
 export default function Client360() {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const [client, setClient] = useState<ClientData | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'infra' | 'billing'>('overview');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
+  // 1. Fetch Client Data
   useEffect(() => {
     if (!clientId) return;
     const unsub = onSnapshot(doc(firestore, 'tenants', clientId), (doc) => {
@@ -40,6 +56,82 @@ export default function Client360() {
     });
     return () => unsub();
   }, [clientId]);
+
+  // 2. Fetch Activity Logs (Timeline)
+  useEffect(() => {
+    if (!clientId) return;
+    const q = query(
+      collection(firestore, 'audit_logs'),
+      where('tenantId', '==', clientId),
+      orderBy('timestamp', 'desc'),
+      limit(5)
+    );
+    
+    // הוספנו טיפול בשגיאות כדי לא לתקוע את הדף אם אין אינדקס
+    const unsubLogs = onSnapshot(q, (snapshot) => {
+      setLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LogEntry)));
+    }, (error) => {
+      console.log("Waiting for Index creation...");
+    });
+    
+    return () => unsubLogs();
+  }, [clientId]);
+
+  // --- Export Logs Function ---
+  const handleExportLogs = async () => {
+    if (!clientId || !client) return;
+    setIsExporting(true);
+    try {
+      const q = query(
+        collection(firestore, 'audit_logs'),
+        where('tenantId', '==', clientId),
+        orderBy('timestamp', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      
+      const headers = ['Date', 'Time', 'Action', 'Target', 'Performed By', 'Details'];
+      const rows = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const dateObj = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
+        // Format details for CSV to avoid raw JSON look
+        let detailsStr = '-';
+        if (data.details) {
+            detailsStr = Object.entries(data.details)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(' | ');
+        }
+        
+        return [
+          dateObj.toLocaleDateString('he-IL'),
+          dateObj.toLocaleTimeString('he-IL'),
+          data.action,
+          data.targetName || '-',
+          data.performedBy || 'System',
+          detailsStr
+        ];
+      });
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `audit_logs_${client.name}_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("שגיאה בייצוא הלוגים. וודא שלחצת על הקישור בקונסול ליצירת האינדקס.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const toggleStatus = async () => {
     if (!client || !clientId) return;
@@ -57,6 +149,7 @@ export default function Client360() {
         });
         
         await addDoc(collection(firestore, 'audit_logs'), {
+            tenantId: clientId,
             action: 'CHANGE_STATUS',
             targetId: clientId,
             targetName: client.name,
@@ -71,6 +164,17 @@ export default function Client360() {
         setIsUpdating(false);
       }
     }
+  };
+
+  // Helper to format details nicely in UI
+  const formatDetails = (details: any) => {
+    if (!details) return null;
+    return Object.entries(details).map(([key, value]) => (
+        <span key={key} className="inline-block mr-3 bg-black/20 px-2 py-0.5 rounded text-indigo-200">
+            <span className="opacity-50 uppercase text-[9px] mr-1">{key}:</span>
+            {String(value)}
+        </span>
+    ));
   };
 
   if (!client) return (
@@ -91,7 +195,6 @@ export default function Client360() {
       {/* HEADER */}
       <header className="sticky top-0 z-30 bg-[#0f172a]/80 backdrop-blur-xl border-b border-white/5 p-4 mb-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          
           <div className="flex items-center gap-4 w-full md:w-auto">
             <button onClick={() => navigate('/admin/clients')} className="p-2 hover:bg-white/5 rounded-full transition-colors">
               <ArrowRight size={20} className="text-slate-400" />
@@ -115,7 +218,6 @@ export default function Client360() {
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <div className="text-left ml-4 hidden lg:block">
               <p className="text-[10px] text-slate-500 uppercase font-bold">Health Score</p>
@@ -126,20 +228,13 @@ export default function Client360() {
                 <span className="text-sm font-black text-emerald-400">{client.healthScore}</span>
               </div>
             </div>
-            
-            <button 
-              onClick={toggleStatus}
-              disabled={isUpdating}
+            <button onClick={toggleStatus} disabled={isUpdating}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                client.status === 'active' 
-                ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20' 
-                : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
-              }`}
-            >
+                client.status === 'active' ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20' : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20'
+              }`}>
               {client.status === 'active' ? <Lock size={14}/> : <Zap size={14}/>}
               {client.status === 'active' ? 'השבת גישה' : 'הפעל לקוח'}
             </button>
-            
             <button className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold border border-white/10 flex items-center gap-2 transition-all">
               <ExternalLink size={14} /> כניסה
             </button>
@@ -155,31 +250,22 @@ export default function Client360() {
             { id: 'infra', label: 'תשתית ו-BYOS', icon: Database },
             { id: 'billing', label: 'פיננסים', icon: CreditCard }
           ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                activeTab === tab.id 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <tab.icon size={16} />
-              {tab.label}
+                activeTab === tab.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+              <tab.icon size={16} /> {tab.label}
             </button>
           ))}
         </div>
 
         <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
+          <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+            
+            {/* OVERVIEW TAB */}
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* 1. Usage Card */}
                 <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm hover:border-white/10 transition-colors">
                   <h3 className="text-sm font-bold text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-widest">
                     <Users size={14} /> ניצול משאבים
@@ -196,30 +282,72 @@ export default function Client360() {
                     </div>
                     <div>
                       <div className="flex justify-between text-xs mb-2">
-                        <span className="text-slate-300">נפח אחסון</span>
-                        <span className="text-white font-bold">BYOS Mode</span>
+                         <span className="text-slate-300">נפח אחסון</span>
+                         <span className="text-white font-bold">BYOS Mode</span>
                       </div>
                       <div className="w-full h-2 bg-black/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-purple-500" style={{ width: '10%' }}></div>
+                         <div className="h-full bg-purple-500" style={{ width: '10%' }}></div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm hover:border-white/10 transition-colors">
-                  <h3 className="text-sm font-bold text-slate-400 mb-6 flex items-center gap-2 uppercase tracking-widest">
-                    <Settings size={14} /> מודולים פעילים
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {client.activeModules && client.activeModules.map((mod) => (
-                      <div key={mod} className="flex items-center gap-2 bg-black/20 px-3 py-2 rounded-xl border border-white/5">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
-                        <span className="text-xs font-bold text-slate-200 capitalize">{mod.replace('_', ' ')}</span>
-                      </div>
-                    ))}
+                {/* 2. Timeline Widget */}
+                <div className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 backdrop-blur-sm hover:border-white/10 transition-colors md:col-span-2">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-sm font-bold text-slate-400 flex items-center gap-2 uppercase tracking-widest">
+                      <History size={14} /> פעילות אחרונה בתיק הלקוח
+                    </h3>
+                    <button 
+                      onClick={handleExportLogs}
+                      disabled={isExporting}
+                      className="text-xs font-bold text-indigo-400 hover:text-white flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500 px-3 py-1.5 rounded-lg border border-indigo-500/20 transition-all"
+                    >
+                      {isExporting ? <Activity className="animate-spin" size={14}/> : <Download size={14}/>}
+                      ייצוא לוגים
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {logs.length === 0 ? (
+                       <div className="text-center py-8 text-slate-500 text-sm">אין פעילות רשומה עדיין.</div>
+                    ) : (
+                      logs.map(log => (
+                        <div key={log.id} className="flex gap-4 items-start group">
+                           <div className="mt-1">
+                              <div className={`w-2 h-2 rounded-full ring-4 ring-slate-900 ${
+                                log.action === 'DELETE_USER' ? 'bg-rose-500' : 
+                                log.action === 'CHANGE_STATUS' ? 'bg-amber-500' : 
+                                'bg-emerald-500'
+                              }`}></div>
+                              <div className="w-0.5 h-full bg-slate-800 mx-auto -mt-2 group-last:hidden"></div>
+                           </div>
+                           <div className="flex-1 bg-slate-800/50 p-3 rounded-xl border border-white/5 hover:bg-slate-800 transition-colors">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="text-xs font-bold text-slate-300">
+                                  {log.action === 'INVITE_USER' ? 'הזמנת משתמש' : 
+                                   log.action === 'DELETE_USER' ? 'מחיקת משתמש' : 
+                                   log.action === 'CHANGE_STATUS' ? 'שינוי סטטוס' : log.action}
+                                </span>
+                                <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                                   <Clock size={10}/> 
+                                   {log.timestamp?.toDate ? log.timestamp.toDate().toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'}) : 'Just now'}
+                                </span>
+                              </div>
+                              <p className="text-sm text-slate-400">
+                                 בוצע על <b>{log.targetName}</b> על ידי {log.performedBy}
+                              </p>
+                              <div className="mt-2 text-xs font-mono">
+                                {formatDetails(log.details)}
+                              </div>
+                           </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
+                {/* 3. Info Card */}
                 <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-3xl p-6 relative overflow-hidden group">
                   <div className="absolute -right-4 -top-4 text-indigo-500/10 group-hover:scale-110 transition-transform duration-500 pointer-events-none">
                     <ShieldCheck size={120} />
@@ -230,7 +358,6 @@ export default function Client360() {
                   <div className="space-y-3 relative z-10">
                     <p className="text-xs text-slate-300">איש קשר: <span className="text-white font-bold">{client.contactPerson}</span></p>
                     <p className="text-xs text-slate-300">אימייל: <span className="text-white font-bold">{client.adminEmail}</span></p>
-                    <p className="text-xs text-slate-300">תמיכה: <span className="text-white font-bold">Priority Support</span></p>
                     <button className="mt-6 w-full bg-indigo-500 hover:bg-indigo-400 text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-indigo-500/20">
                       צור קשר עם {client.contactPerson.split(' ')[0]}
                     </button>
