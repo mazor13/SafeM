@@ -3,7 +3,8 @@ import {
   collection, query, where, onSnapshot, getDocs,
   doc, writeBatch, serverTimestamp, increment 
 } from 'firebase/firestore';
-import { firestore } from '../../firebase';
+import { sendPasswordResetEmail } from 'firebase/auth'; // Auth Import
+import { firestore, auth } from '../../firebase'; // Auth Instance
 import { 
   UserPlus, Mail, Shield, 
   CheckCircle2, XCircle, Search, Trash2, RotateCcw
@@ -44,7 +45,66 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Invite Logic
+  // --- 1. DELETE LOGIC (ATOMIC) ---
+  const handleDelete = async (userId: string, userName: string, userEmail: string) => {
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את ${userName}? פעולה זו תפנה רישיון אחד בחבילה.`)) {
+      return;
+    }
+
+    try {
+      const batch = writeBatch(firestore);
+
+      // A. Delete User Doc
+      const userRef = doc(firestore, 'users', userId);
+      batch.delete(userRef);
+
+      // B. Decrement Tenant Counter
+      const tenantRef = doc(firestore, 'tenants', clientId);
+      batch.update(tenantRef, {
+        usersCount: increment(-1),
+        lastUpdated: serverTimestamp()
+      });
+
+      // C. Audit Log
+      const auditRef = doc(collection(firestore, 'audit_logs'));
+      batch.set(auditRef, {
+        action: 'DELETE_USER',
+        targetId: userId,
+        targetName: userName,
+        performedBy: 'Admin Console',
+        details: { email: userEmail, reason: 'Admin Action' },
+        timestamp: serverTimestamp()
+      });
+
+      await batch.commit();
+      alert("המשתמש נמחק והרישיון שוחרר בהצלחה.");
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      alert("שגיאה במחיקת משתמש");
+    }
+  };
+
+  // --- 2. RESET PASSWORD LOGIC ---
+  const handleResetPassword = async (email: string) => {
+    if (!window.confirm(`לשלוח מייל איפוס סיסמה ל-${email}?`)) {
+      return;
+    }
+    
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert(`מייל איפוס נשלח ל-${email}`);
+    } catch (err: any) {
+      console.error("Reset Error:", err);
+      // הערה: אם המשתמש קיים רק ב-Firestore ולא ב-Auth, נקבל שגיאה.
+      if (err.code === 'auth/user-not-found') {
+        alert("שגיאה: המשתמש עדיין לא ביצע רישום ראשוני (Sign Up) ולכן לא ניתן לאפס סיסמה.");
+      } else {
+        alert("שגיאה בשליחת המייל: " + err.message);
+      }
+    }
+  };
+
+  // --- 3. INVITE LOGIC (SAME AS BEFORE) ---
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentCount >= limit) {
@@ -54,7 +114,6 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
 
     setIsLoading(true);
     try {
-      // 1. Check for duplicates in this tenant
       const duplicateQuery = query(
         collection(firestore, 'users'), 
         where('tenantId', '==', clientId),
@@ -68,7 +127,6 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
         return;
       }
 
-      // 2. Batch Write
       const batch = writeBatch(firestore);
       
       const userRef = doc(collection(firestore, 'users'));
@@ -172,9 +230,23 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
                  }`}>
                    {user.status === 'active' ? 'פעיל' : user.status === 'pending' ? 'הוזמן' : 'חסום'}
                  </span>
+                 
+                 {/* כפתורי הפעולה החדשים */}
                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button title="איפוס סיסמה" className="p-2 hover:bg-white/10 rounded-lg text-slate-400"><RotateCcw size={16}/></button>
-                    <button title="מחיקה" className="p-2 hover:bg-rose-500/20 rounded-lg text-rose-400"><Trash2 size={16}/></button>
+                    <button 
+                      onClick={() => handleResetPassword(user.email)}
+                      title="איפוס סיסמה" 
+                      className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                    >
+                      <RotateCcw size={16}/>
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(user.id, user.fullName, user.email)}
+                      title="מחיקה" 
+                      className="p-2 hover:bg-rose-500/20 rounded-lg text-rose-400 hover:text-rose-500 transition-colors"
+                    >
+                      <Trash2 size={16}/>
+                    </button>
                  </div>
               </div>
             </div>
