@@ -31,9 +31,15 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
   });
 
   useEffect(() => {
+    // מביאים את כל המשתמשים של הלקוח
     const q = query(collection(firestore, 'users'), where('tenantId', '==', clientId));
+    
     const unsub = onSnapshot(q, (snapshot) => {
-      setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      // 🟢 CLIENT-SIDE FILTERING: מסננים החוצה משתמשים שמחוקים "רכית"
+      // אנחנו עושים את הסינון כאן כדי להימנע מבעיות אינדקס מורכבות כרגע
+      const activeUsers = allUsers.filter((u: any) => u.status !== 'deleted');
+      setUsers(activeUsers);
     });
     return () => unsub();
   }, [clientId]);
@@ -43,44 +49,50 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // DELETE
+  // 🟢 SOFT DELETE IMPLEMENTATION
   const handleDelete = async (userId: string, userName: string, userEmail: string) => {
-    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את ${userName}? פעולה זו תפנה רישיון אחד בחבילה.`)) {
+    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את ${userName}? \n(המשתמש יועבר לארכיון והרישיון ישוחרר)`)) {
       return;
     }
 
     try {
       const batch = writeBatch(firestore);
+      
+      // 1. במקום למחוק פיזית, אנחנו מעדכנים סטטוס ל-'deleted'
       const userRef = doc(firestore, 'users', userId);
-      batch.delete(userRef);
+      batch.update(userRef, {
+        status: 'deleted',
+        deletedAt: serverTimestamp(),
+        previousStatus: 'active' // שומרים את הסטטוס הקודם ליתר ביטחון
+      });
 
+      // 2. עדיין מורידים את המכסה (Quota) כי המשתמש לא פעיל יותר
       const tenantRef = doc(firestore, 'tenants', clientId);
       batch.update(tenantRef, {
         usersCount: increment(-1),
         lastUpdated: serverTimestamp()
       });
 
-      // Log with tenantId
+      // 3. תיעוד בלוגים
       const auditRef = doc(collection(firestore, 'audit_logs'));
       batch.set(auditRef, {
-        tenantId: clientId, // Critical for timeline
-        action: 'DELETE_USER',
+        tenantId: clientId,
+        action: 'DELETE_USER', // Soft Delete
         targetId: userId,
         targetName: userName,
         performedBy: 'Admin Console',
-        details: { email: userEmail, reason: 'Admin Action' },
+        details: { email: userEmail, type: 'Soft Delete' },
         timestamp: serverTimestamp()
       });
 
       await batch.commit();
-      alert("המשתמש נמחק והרישיון שוחרר בהצלחה.");
+      alert("המשתמש הועבר לארכיון והרישיון שוחרר בהצלחה.");
     } catch (err) {
       console.error("Error deleting user:", err);
       alert("שגיאה במחיקת משתמש");
     }
   };
 
-  // RESET PASSWORD
   const handleResetPassword = async (email: string) => {
     if (!window.confirm(`לשלוח מייל איפוס סיסמה ל-${email}?`)) {
       return;
@@ -98,7 +110,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
     }
   };
 
-  // INVITE
+  // 🟢 NORMALIZATION IMPLEMENTATION
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentCount >= limit) {
@@ -108,15 +120,27 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
 
     setIsLoading(true);
     try {
+      // 1. Normalization: המרה לאותיות קטנות וניקוי רווחים
+      const normalizedEmail = newUser.email.trim().toLowerCase();
+
+      // בדיקת כפילויות
       const duplicateQuery = query(
         collection(firestore, 'users'), 
         where('tenantId', '==', clientId),
-        where('email', '==', newUser.email)
+        where('email', '==', normalizedEmail)
       );
+      
+      // הערה: כרגע הבדיקה תמצא גם משתמשים "מחוקים".
+      // במערכת מושלמת, היינו מציעים "לשחזר" משתמש מחוק, אבל כרגע פשוט נחסום כפילות.
       const duplicateSnapshot = await getDocs(duplicateQuery);
       
       if (!duplicateSnapshot.empty) {
-        alert("שגיאה: משתמש עם כתובת אימייל זו כבר קיים אצל הלקוח.");
+        const existingUser = duplicateSnapshot.docs[0].data();
+        if (existingUser.status === 'deleted') {
+           alert("קיים משתמש עבר (מחוק) עם כתובת זו. פנה לתמיכה לשחזור.");
+        } else {
+           alert("שגיאה: משתמש עם כתובת אימייל זו כבר קיים אצל הלקוח.");
+        }
         setIsLoading(false);
         return;
       }
@@ -125,7 +149,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
       const userRef = doc(collection(firestore, 'users'));
       batch.set(userRef, {
         tenantId: clientId,
-        email: newUser.email,
+        email: normalizedEmail, // שומרים את המייל המנורמל
         fullName: newUser.fullName,
         role: newUser.role,
         status: 'pending', 
@@ -138,15 +162,14 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
         lastUpdated: serverTimestamp()
       });
 
-      // Log with tenantId
       const auditRef = doc(collection(firestore, 'audit_logs'));
       batch.set(auditRef, {
-        tenantId: clientId, // Critical for timeline
+        tenantId: clientId,
         action: 'INVITE_USER',
         targetId: userRef.id,
         targetName: newUser.fullName,
         performedBy: 'Admin Console',
-        details: { role: newUser.role, email: newUser.email },
+        details: { role: newUser.role, email: normalizedEmail },
         timestamp: serverTimestamp()
       });
 
@@ -208,7 +231,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
                  </span>
                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleResetPassword(user.email)} title="איפוס סיסמה" className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"><RotateCcw size={16}/></button>
-                    <button onClick={() => handleDelete(user.id, user.fullName, user.email)} title="מחיקה" className="p-2 hover:bg-rose-500/20 rounded-lg text-rose-400 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
+                    <button onClick={() => handleDelete(user.id, user.fullName, user.email)} title="מחיקה (ארכיון)" className="p-2 hover:bg-rose-500/20 rounded-lg text-rose-400 hover:text-rose-500 transition-colors"><Trash2 size={16}/></button>
                  </div>
               </div>
             </div>
@@ -225,7 +248,14 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
             </div>
             <form onSubmit={handleInvite} className="space-y-4">
               <div><label className="text-xs font-bold text-slate-400 block mb-2">שם מלא</label><input required className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.fullName} onChange={e => setNewUser({...newUser, fullName: e.target.value})}/></div>
-              <div><label className="text-xs font-bold text-slate-400 block mb-2">כתובת אימייל</label><input required type="email" className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}/></div>
+              
+              {/* Added helper text for normalization */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-2">כתובת אימייל</label>
+                <input required type="email" className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}/>
+                <p className="text-[10px] text-slate-500 mt-1">המערכת תמיר אוטומטית לאותיות קטנות (Lowercase).</p>
+              </div>
+              
               <div>
                 <label className="text-xs font-bold text-slate-400 block mb-2">תפקיד במערכת</label>
                 <div className="grid grid-cols-3 gap-2">

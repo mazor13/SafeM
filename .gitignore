@@ -1,7 +1,24 @@
+# Dependencies
 node_modules/
-dist/
-.env
 .DS_Store
-*key.json
-*.base64
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Build outputs
+dist/
+functions/lib/
+
+# IDE
+.vscode/
+.idea/
+
+# Secrets (המקום שבו נשמור מפתחות בעתיד)
+.env
+.env.local
+.env.production
 service-account.json
+functions/lib/
