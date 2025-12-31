@@ -18,7 +18,8 @@ import {
   ClipboardCheck,
   GraduationCap,
   Wrench,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft
 } from 'lucide-react';
 
 interface NavItem {
@@ -26,6 +27,7 @@ interface NavItem {
   to: string;
   icon: any;
   end?: boolean;
+  children?: NavItem[];
 }
 
 export default function AdminLayout() {
@@ -33,6 +35,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety']);
 
+  // Guard Clause
   if (!loading && !user) {
     return <Navigate to="/login" replace />;
   }
@@ -61,7 +64,7 @@ export default function AdminLayout() {
     );
   };
 
-  const mainNavigation: NavItem[] = [
+  const navigation: NavItem[] = [
     { name: 'מגדל פיקוח', to: '/admin', end: true, icon: Home },
     { name: 'Cortex BI', to: '/admin/dashboard-bi', icon: LayoutDashboard },
   ];
@@ -69,6 +72,7 @@ export default function AdminLayout() {
   const crmNavigation: NavItem[] = [
     { name: 'לידים', to: '/admin/crm/leads', icon: UserPlus },
     { name: 'אנשי קשר', to: '/admin/crm/contacts', icon: Users },
+    { name: 'חשבונות', to: '/admin/crm/accounts', icon: Building2 },
     { name: 'הזדמנויות', to: '/admin/crm/opportunities', icon: Target },
     { name: 'פעילויות', to: '/admin/crm/activities', icon: Activity },
   ];
@@ -81,7 +85,7 @@ export default function AdminLayout() {
   ];
 
   const managementNavigation: NavItem[] = [
-    { name: 'לקוחות', to: '/admin/clients', icon: Building2 },
+    { name: 'לקוחות', to: '/admin/clients', icon: Users },
     { name: 'ניהול ידע', to: '/admin/templates', icon: FileText },
     { name: 'פיננסים', to: '/admin/finance', icon: CreditCard },
     { name: 'מוצרים', to: '/admin/products', icon: Package },
@@ -163,7 +167,7 @@ export default function AdminLayout() {
           {/* Main Navigation */}
           <div className="mb-4">
             <p className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">ראשי</p>
-            {mainNavigation.map((item) => (
+            {navigation.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.to}
