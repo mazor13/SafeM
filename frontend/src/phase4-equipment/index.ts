@@ -22,6 +22,17 @@ export {
   InspectionDashboardStyles 
 } from './components/InspectionDashboard';
 export {
+  InspectionExecution,
+  InspectionExecutionStyles,
+} from './components/InspectionExecution';
+export type {
+  InspectionRecord,
+  InspectionPhase,
+  InspectionTemplate,
+  InspectionSection,
+  InspectionField,
+} from './components/InspectionExecution';
+export {
   FindingList,
   FindingForm,
   FindingStyles,
