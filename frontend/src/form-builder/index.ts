@@ -24,3 +24,8 @@ export {
   ForkliftInspectionSchema,
   ElevatorInspectionSchema
 } from './templates/lifting-inspection';
+export {
+  PressureInspectionTemplates,
+  SteamBoilerInspectionSchema,
+  PressureVesselInspectionSchema
+} from './templates/pressure-inspection';
