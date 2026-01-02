@@ -21,9 +21,28 @@ export {
   InspectionDashboard, 
   InspectionDashboardStyles 
 } from './components/InspectionDashboard';
+export {
+  FindingList,
+  FindingForm,
+  FindingStyles,
+  SEVERITY_CONFIG,
+  STATUS_CONFIG,
+  FINDING_CATEGORIES,
+  calculateFindingStats,
+  isOverdue,
+  sortFindings,
+} from './components/FindingTracker';
+export type {
+  Finding,
+  FindingSeverity,
+  FindingStatus,
+  FindingFilters,
+  FindingStats,
+} from './components/FindingTracker';
 
 // Services
 export * from './services/inspectionScheduler';
 
 // Hooks
 export { useEquipment, useLocations, useEquipmentStats } from './hooks/useEquipment';
+export { useFindings, useFindingStats } from './hooks/useFindings';
