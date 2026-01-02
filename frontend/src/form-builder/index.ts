@@ -12,3 +12,9 @@ export { FormRenderer, FormRendererStyles } from './components/FormRenderer';
 
 // Templates
 export { LaserInspectionTemplates, LaserQuarterlyInspectionSchema } from './templates/laser-inspection';
+export { 
+  FireInspectionTemplates, 
+  FireExtinguisherMonthlySchema,
+  FireExtinguisherAnnualSchema,
+  SmokeDetectorInspectionSchema 
+} from './templates/fire-inspection';
