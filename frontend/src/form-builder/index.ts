@@ -18,3 +18,9 @@ export {
   FireExtinguisherAnnualSchema,
   SmokeDetectorInspectionSchema 
 } from './templates/fire-inspection';
+export {
+  LiftingInspectionTemplates,
+  CraneInspectionSchema,
+  ForkliftInspectionSchema,
+  ElevatorInspectionSchema
+} from './templates/lifting-inspection';
