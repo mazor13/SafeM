@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '../../firebase';
-import { ArrowRight, Users, Database, Activity, ShieldAlert, Globe, Zap, LayoutDashboard, CreditCard } from 'lucide-react';
+import { ArrowRight, Users, Database, ShieldAlert, Globe, Zap, LayoutDashboard, CreditCard, Contact, Clock, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import UsersTab from '../../components/admin/UsersTab';
 import InfraHub from '../../components/admin/InfraHub';
 import OpsCenter from '../../components/admin/ops/OpsCenter';
+import ContactsTab from '../../components/admin/ContactsTab';
+import EscalationTab from '../../components/admin/EscalationTab';
+import AuditLogTab from '../../components/admin/AuditLogTab';
 
 export default function Client360() {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const [client, setClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'infra' | 'ops' | 'billing'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'escalation' | 'users' | 'infra' | 'ops' | 'history' | 'billing'>('overview');
 
   useEffect(() => {
     if (!clientId) return;
@@ -26,9 +29,12 @@ export default function Client360() {
 
   const tabs = [
     { id: 'overview', label: 'סקירה', icon: LayoutDashboard },
+    { id: 'contacts', label: 'אנשי קשר', icon: Contact },
+    { id: 'escalation', label: 'הסלמה', icon: Clock },
     { id: 'users', label: 'צוות', icon: Users },
     { id: 'infra', label: 'תשתיות', icon: Database },
     { id: 'ops', label: 'מרכז בקרה', icon: ShieldAlert },
+    { id: 'history', label: 'היסטוריה', icon: History },
     { id: 'billing', label: 'פיננסים', icon: CreditCard }
   ];
 
@@ -70,12 +76,25 @@ export default function Client360() {
                    <p className="text-4xl font-black text-emerald-400">{client.healthScore}%</p>
                 </div>
               )}
+              
+              {activeTab === 'contacts' && (
+                <ContactsTab clientId={client.id} clientName={client.name} />
+              )}
+              
+              {activeTab === 'escalation' && (
+                <EscalationTab clientId={client.id} clientName={client.name} />
+              )}
+              
               {activeTab === 'users' && <UsersTab clientId={client.id} clientName={client.name} limit={client.usersLimit} currentCount={client.usersCount || 0} />}
               {activeTab === 'infra' && <InfraHub clientId={client.id} clientName={client.name} clientPlan={client.plan} initialData={client} />}
               
               {/* החיבור למרכז הבקרה */}
               {activeTab === 'ops' && (
                 <OpsCenter clientId={client.id} supportLevel={3} />
+              )}
+              
+              {activeTab === 'history' && (
+                <AuditLogTab clientId={client.id} clientName={client.name} />
               )}
 
               {activeTab === 'billing' && <div className="p-20 text-center text-slate-600 italic">מודול פיננסי בקרוב...</div>}

@@ -10,7 +10,7 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
-import { ClientData } from '../../hooks/useClients';
+import { ClientData } from '../../hooks/useClients.old';
 import { Search, ChevronDown, ChevronUp, MoreHorizontal, Globe, AlertCircle } from 'lucide-react';
 
 const StatusBadge = ({ status }: { status: string }) => {

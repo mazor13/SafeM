@@ -87,6 +87,8 @@ export default function AdminLayout() {
   const managementNavigation: NavItem[] = [
     { name: 'לקוחות', to: '/admin/clients', icon: Users },
     { name: 'ניהול ידע', to: '/admin/templates', icon: FileText },
+    { name: 'מסמכים', to: '/admin/documents', icon: FileText },
+    { name: 'מסמכים', to: '/admin/documents', icon: FileText },
     { name: 'פיננסים', to: '/admin/finance', icon: CreditCard },
     { name: 'מוצרים', to: '/admin/products', icon: Package },
     { name: 'הגדרות', to: '/admin/settings', icon: Settings },
