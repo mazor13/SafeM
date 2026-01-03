@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/auth/Login';
 import AdminLayout from './layouts/AdminLayout';
 import AuthProvider from './providers/AuthProvider';
+import ProtectedRoute from './components/ProtectedRoute';
+import Unauthorized from './pages/Unauthorized';
 
 // Admin Pages
 import DashboardBI from './pages/admin/DashboardBI';
@@ -55,9 +57,14 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/unauthorized" element={<Unauthorized />} />
         
-        {/* Client Portal Routes */}
-        <Route path="/portal/:clientId" element={<ClientDashboardLayout />}>
+        {/* Client Portal Routes - Protected for authenticated users */}
+        <Route path="/portal/:clientId" element={
+          <ProtectedRoute>
+            <ClientDashboardLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<ClientOverview />} />
           <Route path="overview" element={<ClientOverview />} />
           <Route path="equipment" element={<ClientEquipment />} />
@@ -66,8 +73,12 @@ function App() {
           <Route path="facilities" element={<ClientFacilities />} />
         </Route>
         
-        {/* Protected Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Protected Admin Routes - Only for admin roles */}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRoles={['super_admin', 'admin', 'system_admin']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<CommandCenter />} />
           <Route path="command" element={<CommandCenter />} />
           <Route path="dashboard-bi" element={<DashboardBI />} />
@@ -123,7 +134,9 @@ function App() {
           <Route path="settings" element={<div className="p-10 text-slate-400">System Settings (Coming Soon)</div>} />
           <Route path="products" element={<ProductManagement />} />
         </Route>
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+
+        {/* Default redirect to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </AuthProvider>
   );
