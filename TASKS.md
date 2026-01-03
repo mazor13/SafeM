@@ -1,77 +1,167 @@
 # AEGIS - משימות פיתוח
 
+## 🏗️ ארכיטקטורת המערכת
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AEGIS PLATFORM                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  LEVEL 1: SUPER ADMIN (Platform Owner)                         │
+│  Route: /admin/*                                                │
+│  ├── ניהול Tenants (יועצים/חברות בטיחות)                       │
+│  ├── חבילות ותמחור                                             │
+│  ├── ניטור כללי                                                │
+│  └── הגדרות מערכת                                              │
+│                                                                 │
+│  LEVEL 2: TENANT (Safety Consultant)                           │
+│  Route: /dashboard/*                                            │
+│  Collection: tenants/{tenantId}                                 │
+│  ├── דשבורד ראשי - סקירת כל הלקוחות                            │
+│  ├── ניהול לקוחות (clients)                                    │
+│  │   └── clients/{clientId}                                     │
+│  ├── ניהול ציוד (לפי לקוח)                                     │
+│  │   └── clients/{clientId}/equipment/{equipId}                │
+│  ├── ביצוע בדיקות                                              │
+│  ├── ניהול ממצאים                                              │
+│  ├── דוחות ואנליטיקה                                           │
+│  ├── CRM - לידים והזדמנויות                                    │
+│  ├── LMS - הדרכות                                              │
+│  └── פיננסי - חשבוניות                                         │
+│                                                                 │
+│  LEVEL 3: CLIENT PORTAL (End Customer)                         │
+│  Route: /portal/*                                               │
+│  Collection: clients/{clientId}                                 │
+│  ├── דשבורד - סקירה כללית                                      │
+│  ├── מתחמים ומיקומים                                           │
+│  ├── ציוד ונכסים                                               │
+│  ├── בדיקות - היסטוריה וקרובות                                 │
+│  ├── ממצאים - צפייה ועדכון סטטוס                               │
+│  ├── מסמכים - תעודות, דוחות                                    │
+│  └── עובדים והדרכות (אם במודול)                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## ✅ הושלם
 
-### Phase 4 - ניהול ציוד
+### Phase 1-3 (תשתית)
+- [x] מערכת Auth
+- [x] Admin Layout
+- [x] ניהול Tenants (Client360)
+- [x] Form Builder
+- [x] Templates System
+
+### Phase 4 - ניהול ציוד (Admin Level)
 - [x] דף רשימת ציוד (`/admin/equipment`)
 - [x] דף ממצאים (`/admin/findings`)
 - [x] Hooks: `useEquipment`, `useFindings`
 - [x] קומפוננטות: `EquipmentList`, `FindingTracker`
+- [x] טופס הוספת ציוד (`/admin/equipment/new`)
 
-### Phase 5 - דוחות ואנליטיקה
+### Phase 5 - דוחות (Admin Level)
 - [x] דף אנליטיקות (`/admin/analytics`)
 - [x] דף היסטוריית בדיקות (`/admin/reports/history`)
 - [x] דף ציות (`/admin/reports/compliance`)
-- [x] Excel Export service
 
-### אינטגרציה
-- [x] Routes ב-App.tsx
-- [x] ניווט בסיידבר (ניהול ציוד, דוחות)
-
----
-
-## 🔄 בתהליך
-
-### P1 - טופס הוספת ציוד
-- [ ] יצירת `EquipmentFormPage.tsx`
-- [ ] חיבור ל-`useEquipment.addEquipment()`
-- [ ] שדות: שם, סוג, תחום, מספר סידורי, לקוח, מיקום
-- [ ] Validation
-- [ ] Route: `/admin/equipment/new`
+### Client Dashboard (קיים אך לא מחובר)
+- [x] ClientDashboardLayout.tsx
+- [x] ClientEquipment.tsx (מלא עם טופס!)
+- [x] ClientOverview.tsx (stub)
+- [x] ClientFacilities.tsx (stub)
+- [x] ClientInspections.tsx (stub)
+- [x] ClientDocuments.tsx (stub)
 
 ---
 
-## 📋 ממתין
+## 🔴 עדיפות גבוהה - חיבור Client Dashboard
 
-### P2 - טופס עריכת ציוד
-- [ ] Route: `/admin/equipment/:id/edit`
-- [ ] טעינת נתונים קיימים
-- [ ] עדכון ב-Firestore
+### P1 - Routes ל-Client Portal
+- [ ] הוסף routes ב-App.tsx ל-`/portal/:clientId/*`
+- [ ] חבר את ClientDashboardLayout
+- [ ] הגדר הרשאות - client רואה רק את עצמו
 
-### P3 - דף פרטי ציוד
-- [ ] Route: `/admin/equipment/:id`
-- [ ] הצגת פרטים מלאים
-- [ ] היסטוריית בדיקות
-- [ ] ממצאים קשורים
+### P2 - חיבור Client Equipment למבנה הנכון
+- [ ] וודא ש-ClientEquipment קורא מ-`clients/{clientId}/equipment`
+- [ ] בדוק שהטופס שומר נכון
+- [ ] הוסף Firestore rules ל-sub-collection
 
-### P4 - ניהול מיקומים
-- [ ] דף מיקומים (`/admin/locations`)
-- [ ] מבנה היררכי
-- [ ] חיבור לציוד
+### P3 - השלמת Client Dashboard Pages
+- [ ] ClientOverview - סטטיסטיקות וציון בריאות
+- [ ] ClientFacilities - מתחמים ומיקומים
+- [ ] ClientInspections - בדיקות קרובות והיסטוריה
+- [ ] ClientDocuments - תעודות ודוחות
 
-### P5 - ביצוע בדיקות
-- [ ] דף ביצוע בדיקה
-- [ ] טופס דינמי לפי סוג ציוד
+---
+
+## 🟡 עדיפות בינונית - Tenant Dashboard
+
+### P4 - דשבורד יועץ בטיחות
+- [ ] Route: `/dashboard/*`
+- [ ] TenantDashboardLayout.tsx
+- [ ] רשימת לקוחות עם סטטיסטיקות
+- [ ] תצוגת ציוד cross-clients
+- [ ] לוח בדיקות מתוכננות
+
+### P5 - ניהול לקוחות (Clients of Tenant)
+- [ ] דף יצירת לקוח חדש
+- [ ] דף עריכת לקוח
+- [ ] הגדרת מודולים ללקוח
+
+---
+
+## 🟢 עדיפות נמוכה - שיפורים
+
+### P6 - ביצוע בדיקות
+- [ ] InspectionExecution component
+- [ ] טופס דינמי לפי template
 - [ ] חתימה דיגיטלית
-- [ ] יצירת דוח PDF
+- [ ] יצירת PDF
 
-### P6 - נתוני בדיקה
-- [ ] סקריפט seed data
-- [ ] יצירת ציוד לדוגמה
-- [ ] יצירת ממצאים לדוגמה
+### P7 - LMS הדרכות
+- [ ] ניהול קורסים
+- [ ] רישום עובדים
+- [ ] מעקב השתתפות
+
+### P8 - פיננסי
+- [ ] יצירת חשבוניות
+- [ ] מעקב תשלומים
+- [ ] דוחות כספיים
 
 ---
 
-## 🐛 באגים ידועים
+## 📁 מבנה Firestore
+```
+tenants/{tenantId}
+  ├── name, plan, settings, limits
+  └── users: sub-collection
 
-- [ ] בדוק שהסיידבר מציג את כל הסקשנים החדשים
+clients/{clientId}
+  ├── tenantId (reference)
+  ├── name, contact, address
+  ├── safetyDomains[]
+  ├── contractDetails
+  └── equipment/{equipmentId}  ← SUB-COLLECTION
+      └── historyLog, purchaseInfo, etc.
+
+users/{userId}
+  ├── tenantId
+  ├── clientId (if client user)
+  └── role
+
+equipment/{equipmentId}  ← FLAT (legacy?)
+findings/{findingId}
+inspections/{inspectionId}
+```
 
 ---
 
 ## 📝 הערות
 
-- Phase 4 קומפוננטות נמצאות ב: `src/phase4-equipment/`
-- Phase 5 קומפוננטות נמצאות ב: `src/phase5-reports/`
-- דפי Wrapper נמצאים ב: `src/pages/admin/equipment/` ו-`src/pages/admin/reports/`
+- `/admin/*` = Super Admin (Platform)
+- `/dashboard/*` = Tenant (Safety Consultant)  
+- `/portal/*` = Client (End Customer)
+- Phase 4/5 components ב-`/admin/equipment` צריכים refactor לתמוך ב-clientId
 
 עודכן: 2026-01-03
