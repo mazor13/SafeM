@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
+import { doc, getDoc } from 'firebase/firestore';
+import { firestore as db, auth } from '../../firebase';
 import { Shield, Lock, Mail, Loader2 } from 'lucide-react';
 
 export default function Login() {
@@ -13,14 +15,43 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); // מונע רענון של הדף
+    e.preventDefault();
     setError('');
     setIsSubmitting(true);
 
     try {
       await login(email, password);
-      // הצלחה! מעבר למסך הניהול
-      navigate('/admin'); 
+      
+      // Get current user after login
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        navigate('/admin');
+        return;
+      }
+      
+      // Get user data to determine redirect
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role;
+        const clientId = userData.clientId;
+        
+        // Redirect based on role
+        if (role === 'super_admin' || role === 'admin' || role === 'system_admin') {
+          navigate('/admin');
+        } else if (role === 'client_user' && clientId) {
+          navigate(`/portal/${clientId}`);
+        } else if (role === 'inspector' && clientId) {
+          navigate(`/portal/${clientId}`);
+        } else if (role === 'inspector') {
+          navigate('/admin');
+        } else {
+          navigate('/admin');
+        }
+      } else {
+        navigate('/admin');
+      }
     } catch (err: any) {
       console.error(err);
       setError('שם משתמש או סיסמה שגויים');
@@ -38,7 +69,7 @@ export default function Login() {
             <Shield size={32} />
           </div>
           <h1 className="text-2xl font-black text-slate-900">התחברות למערכת</h1>
-          <p className="text-slate-500 text-sm mt-1">AEGIS Admin Console</p>
+          <p className="text-slate-500 text-sm mt-1">AEGIS Safety Platform</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -49,8 +80,8 @@ export default function Login() {
               <input 
                 type="email" 
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="admin@company.com"
+                className="w-full bg-slate-50 border border-slate-200 text-gray-900 rounded-xl py-3 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                placeholder="user@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -64,7 +95,7 @@ export default function Login() {
               <input 
                 type="password" 
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                className="w-full bg-slate-50 border border-slate-200 text-gray-900 rounded-xl py-3 pr-10 pl-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

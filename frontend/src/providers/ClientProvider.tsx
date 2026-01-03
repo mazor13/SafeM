@@ -22,6 +22,7 @@ export const ClientProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const fetchClient = async () => {
+      console.log('Fetching client:', clientId);
       if (!clientId) return;
       
       try {

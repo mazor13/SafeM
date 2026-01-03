@@ -1,7 +1,8 @@
 import React from 'react';
-import { Outlet, NavLink, Link } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { ClientProvider, useClient } from '../../providers/ClientProvider';
 import { SystemProvider } from '../../providers/SystemProvider';
+import { useAuth } from '../../providers/AuthProvider';
 import { 
   HomeIcon, 
   BuildingOfficeIcon, 
@@ -9,11 +10,19 @@ import {
   ClipboardDocumentCheckIcon, 
   DocumentTextIcon,
   UsersIcon,
-  ArrowLeftIcon
+  ArrowRightOnRectangleIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 const DashboardContent = () => {
   const { client, loading, error } = useClient();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   if (loading) return <div className="p-8 text-center text-gray-500">טוען נתוני לקוח...</div>;
   if (error || !client) return <div className="p-8 text-center text-red-500">שגיאה: {error}</div>;
@@ -30,13 +39,17 @@ const DashboardContent = () => {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-64px)] bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar */}
       <div className="w-64 bg-white border-l border-gray-200 flex flex-col hidden md:flex">
+        {/* Logo/Brand */}
+        <div className="p-4 border-b border-gray-200 bg-indigo-600">
+          <h1 className="text-xl font-bold text-white">AEGIS</h1>
+          <p className="text-xs text-indigo-200">Client Portal</p>
+        </div>
+
+        {/* Client Info */}
         <div className="p-4 border-b border-gray-100">
-          <Link to="/admin/clients" className="text-xs text-indigo-600 flex items-center mb-2 hover:underline">
-            <ArrowLeftIcon className="h-3 w-3 ml-1" />
-            חזרה לרשימת הלקוחות
-          </Link>
           <h2 className="font-bold text-gray-900 truncate" title={client.name}>
             {client.name}
           </h2>
@@ -45,6 +58,7 @@ const DashboardContent = () => {
           </span>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {navigation.map((item) => (
             <NavLink
@@ -64,7 +78,28 @@ const DashboardContent = () => {
             </NavLink>
           ))}
         </nav>
+
+        {/* User Info & Logout */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center mb-3">
+            <UserCircleIcon className="h-8 w-8 text-gray-400 ml-2" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+          >
+            <ArrowRightOnRectangleIcon className="h-5 w-5 ml-2" />
+            התנתק
+          </button>
+        </div>
       </div>
+
+      {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-4 md:p-8">
         <Outlet />
       </main>
