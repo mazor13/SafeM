@@ -1,8 +1,226 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // ============================================
+    // Helper Functions
+    // ============================================
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Get user document
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Check if user belongs to tenant
+    function belongsToTenant(tenantId) {
+      return isAuthenticated() && getUserData().tenantId == tenantId;
+    }
+    
+    // Check if user has role
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+    
+    // Check if user has any of the roles
+    function hasAnyRole(roles) {
+      return isAuthenticated() && getUserData().role in roles;
+    }
+    
+    // Check if resource belongs to user's tenant
+    function resourceBelongsToUserTenant() {
+      return resource.data.tenantId == getUserData().tenantId;
+    }
+    
+    // Check if new resource will belong to user's tenant
+    function newResourceBelongsToUserTenant() {
+      return request.resource.data.tenantId == getUserData().tenantId;
+    }
+    
+    // Admin check
+    function isAdmin() {
+      return hasAnyRole(['admin', 'super_admin', 'system_admin']);
+    }
+    
+    // Safety officer check
+    function isSafetyOfficer() {
+      return hasAnyRole(['admin', 'super_admin', 'safety_officer', 'inspector']);
+    }
+    
+    // ============================================
+    // Existing Collections
+    // ============================================
+    
+    // Users
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // Tenants
+    match /tenants/{tenantId} {
+      allow read: if belongsToTenant(tenantId) || isAdmin();
+      allow create: if isAdmin();
+      allow update: if belongsToTenant(tenantId) && isAdmin();
+      allow delete: if hasRole('super_admin');
+    }
+    
+    // Templates
+    match /templates/{templateId} {
+      allow read: if isAuthenticated() && (
+        resource.data.tenantId == 'system' || 
+        resourceBelongsToUserTenant()
+      );
+      allow create: if isAuthenticated() && (
+        newResourceBelongsToUserTenant() || 
+        (request.resource.data.tenantId == 'system' && isAdmin())
+      );
+      allow update, delete: if isAuthenticated() && (
+        resourceBelongsToUserTenant() || 
+        (resource.data.tenantId == 'system' && isAdmin())
+      );
+    }
+    
+    // Filled Forms
+    match /filled_forms/{formId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Documents
+    match /documents/{documentId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Audit Log
+    match /audit_log/{logId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      // Audit logs are immutable
+      allow update, delete: if false;
+    }
+    
+    // Leads (CRM)
+    match /leads/{leadId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // ============================================
+    // Phase 4 Collections - Equipment Management
+    // ============================================
+    
+    // Equipment
+    match /equipment/{equipmentId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Locations
+    match /locations/{locationId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Inspections
+    match /inspections/{inspectionId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Findings
+    match /findings/{findingId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // ============================================
+    // Phase 5 Collections - Reports & Analytics
+    // ============================================
+    
+    // Reports (generated reports)
+    match /reports/{reportId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Compliance Records
+    match /compliance/{complianceId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Analytics Snapshots (periodic data captures)
+    match /analytics_snapshots/{snapshotId} {
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      // Snapshots are immutable
+      allow update, delete: if false;
+    }
+    
+    // ============================================
+    // System Collections
+    // ============================================
+    
+    // System Config (global settings)
+    match /system_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('super_admin');
+    }
+    
+    // Categories
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    // ============================================
+    // Client Portal Collections
+    // ============================================
+    
+    // Client Portal Access
+    match /client_portal_access/{accessId} {
+      allow read: if isAuthenticated() && (
+        resourceBelongsToUserTenant() ||
+        resource.data.clientUserId == request.auth.uid
+      );
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isAdmin();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    }
+    
+    // Shared Documents (with clients)
+    match /shared_documents/{docId} {
+      allow read: if isAuthenticated() && (
+        resourceBelongsToUserTenant() ||
+        request.auth.uid in resource.data.sharedWith
+      );
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
     }
   }
 }

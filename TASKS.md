@@ -1,167 +1,55 @@
-# AEGIS - משימות פיתוח
+# AEGIS - ניהול משימות
 
-## 🏗️ ארכיטקטורת המערכת
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    AEGIS PLATFORM                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  LEVEL 1: SUPER ADMIN (Platform Owner)                         │
-│  Route: /admin/*                                                │
-│  ├── ניהול Tenants (יועצים/חברות בטיחות)                       │
-│  ├── חבילות ותמחור                                             │
-│  ├── ניטור כללי                                                │
-│  └── הגדרות מערכת                                              │
-│                                                                 │
-│  LEVEL 2: TENANT (Safety Consultant)                           │
-│  Route: /dashboard/*                                            │
-│  Collection: tenants/{tenantId}                                 │
-│  ├── דשבורד ראשי - סקירת כל הלקוחות                            │
-│  ├── ניהול לקוחות (clients)                                    │
-│  │   └── clients/{clientId}                                     │
-│  ├── ניהול ציוד (לפי לקוח)                                     │
-│  │   └── clients/{clientId}/equipment/{equipId}                │
-│  ├── ביצוע בדיקות                                              │
-│  ├── ניהול ממצאים                                              │
-│  ├── דוחות ואנליטיקה                                           │
-│  ├── CRM - לידים והזדמנויות                                    │
-│  ├── LMS - הדרכות                                              │
-│  └── פיננסי - חשבוניות                                         │
-│                                                                 │
-│  LEVEL 3: CLIENT PORTAL (End Customer)                         │
-│  Route: /portal/*                                               │
-│  Collection: clients/{clientId}                                 │
-│  ├── דשבורד - סקירה כללית                                      │
-│  ├── מתחמים ומיקומים                                           │
-│  ├── ציוד ונכסים                                               │
-│  ├── בדיקות - היסטוריה וקרובות                                 │
-│  ├── ממצאים - צפייה ועדכון סטטוס                               │
-│  ├── מסמכים - תעודות, דוחות                                    │
-│  └── עובדים והדרכות (אם במודול)                                │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
-```
+## 📚 קבצי תיעוד
+
+| קובץ | תיאור |
+|------|--------|
+| [docs/WORKPLAN.md](docs/WORKPLAN.md) | תוכנית עבודה מפורטת עם משימות |
+| [docs/BUGS.md](docs/BUGS.md) | מעקב באגים |
+| [docs/SPEC_EQUIPMENT_FORM.md](docs/SPEC_EQUIPMENT_FORM.md) | אפיון טופס ציוד |
+| [CHANGELOG.md](CHANGELOG.md) | היסטוריית שינויים |
 
 ---
 
-## ✅ הושלם
+## 🎯 Sprint נוכחי: Client Portal
 
-### Phase 1-3 (תשתית)
-- [x] מערכת Auth
-- [x] Admin Layout
-- [x] ניהול Tenants (Client360)
-- [x] Form Builder
-- [x] Templates System
+**מטרה:** חיבור Client Dashboard הקיים
 
-### Phase 4 - ניהול ציוד (Admin Level)
-- [x] דף רשימת ציוד (`/admin/equipment`)
-- [x] דף ממצאים (`/admin/findings`)
-- [x] Hooks: `useEquipment`, `useFindings`
-- [x] קומפוננטות: `EquipmentList`, `FindingTracker`
-- [x] טופס הוספת ציוד (`/admin/equipment/new`)
+| # | משימה | סטטוס | עדיפות |
+|---|--------|--------|---------|
+| 001 | הוספת Routes | ⬜ | 🔴 |
+| 002 | בדיקת ClientEquipment | ⬜ | 🔴 |
+| 003 | Firestore Rules | ⬜ | 🔴 |
+| 004 | השלמת Overview | ⬜ | 🟡 |
+| 005 | השלמת Inspections | ⬜ | 🟡 |
 
-### Phase 5 - דוחות (Admin Level)
-- [x] דף אנליטיקות (`/admin/analytics`)
-- [x] דף היסטוריית בדיקות (`/admin/reports/history`)
-- [x] דף ציות (`/admin/reports/compliance`)
-
-### Client Dashboard (קיים אך לא מחובר)
-- [x] ClientDashboardLayout.tsx
-- [x] ClientEquipment.tsx (מלא עם טופס!)
-- [x] ClientOverview.tsx (stub)
-- [x] ClientFacilities.tsx (stub)
-- [x] ClientInspections.tsx (stub)
-- [x] ClientDocuments.tsx (stub)
+**לפרטים מלאים:** [docs/WORKPLAN.md](docs/WORKPLAN.md)
 
 ---
 
-## 🔴 עדיפות גבוהה - חיבור Client Dashboard
+## ⚡ פקודות מהירות
+```bash
+# התחל לעבוד על משימה
+git checkout -b feature/TASK-XXX
 
-### P1 - Routes ל-Client Portal
-- [ ] הוסף routes ב-App.tsx ל-`/portal/:clientId/*`
-- [ ] חבר את ClientDashboardLayout
-- [ ] הגדר הרשאות - client רואה רק את עצמו
+# סיים משימה
+git add .
+git commit -m "feat: TASK-XXX - תיאור"
+git push origin feature/TASK-XXX
 
-### P2 - חיבור Client Equipment למבנה הנכון
-- [ ] וודא ש-ClientEquipment קורא מ-`clients/{clientId}/equipment`
-- [ ] בדוק שהטופס שומר נכון
-- [ ] הוסף Firestore rules ל-sub-collection
-
-### P3 - השלמת Client Dashboard Pages
-- [ ] ClientOverview - סטטיסטיקות וציון בריאות
-- [ ] ClientFacilities - מתחמים ומיקומים
-- [ ] ClientInspections - בדיקות קרובות והיסטוריה
-- [ ] ClientDocuments - תעודות ודוחות
-
----
-
-## 🟡 עדיפות בינונית - Tenant Dashboard
-
-### P4 - דשבורד יועץ בטיחות
-- [ ] Route: `/dashboard/*`
-- [ ] TenantDashboardLayout.tsx
-- [ ] רשימת לקוחות עם סטטיסטיקות
-- [ ] תצוגת ציוד cross-clients
-- [ ] לוח בדיקות מתוכננות
-
-### P5 - ניהול לקוחות (Clients of Tenant)
-- [ ] דף יצירת לקוח חדש
-- [ ] דף עריכת לקוח
-- [ ] הגדרת מודולים ללקוח
-
----
-
-## 🟢 עדיפות נמוכה - שיפורים
-
-### P6 - ביצוע בדיקות
-- [ ] InspectionExecution component
-- [ ] טופס דינמי לפי template
-- [ ] חתימה דיגיטלית
-- [ ] יצירת PDF
-
-### P7 - LMS הדרכות
-- [ ] ניהול קורסים
-- [ ] רישום עובדים
-- [ ] מעקב השתתפות
-
-### P8 - פיננסי
-- [ ] יצירת חשבוניות
-- [ ] מעקב תשלומים
-- [ ] דוחות כספיים
-
----
-
-## 📁 מבנה Firestore
-```
-tenants/{tenantId}
-  ├── name, plan, settings, limits
-  └── users: sub-collection
-
-clients/{clientId}
-  ├── tenantId (reference)
-  ├── name, contact, address
-  ├── safetyDomains[]
-  ├── contractDetails
-  └── equipment/{equipmentId}  ← SUB-COLLECTION
-      └── historyLog, purchaseInfo, etc.
-
-users/{userId}
-  ├── tenantId
-  ├── clientId (if client user)
-  └── role
-
-equipment/{equipmentId}  ← FLAT (legacy?)
-findings/{findingId}
-inspections/{inspectionId}
+# מזג ל-main
+git checkout main
+git merge feature/TASK-XXX
+git push
 ```
 
 ---
 
-## 📝 הערות
-
-- `/admin/*` = Super Admin (Platform)
-- `/dashboard/*` = Tenant (Safety Consultant)  
-- `/portal/*` = Client (End Customer)
-- Phase 4/5 components ב-`/admin/equipment` צריכים refactor לתמוך ב-clientId
+## 🏗️ ארכיטקטורה
+```
+/admin/*     → Super Admin (Platform Owner)
+/dashboard/* → Tenant (Safety Consultant)  
+/portal/*    → Client Portal (End Customer)
+```
 
 עודכן: 2026-01-03

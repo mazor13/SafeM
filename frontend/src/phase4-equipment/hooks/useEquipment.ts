@@ -18,7 +18,7 @@ import {
   Timestamp,
   QueryConstraint,
 } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { firestore as db } from '../../firebase';
 import {
   Equipment,
   EquipmentFilters,

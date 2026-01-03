@@ -18,7 +18,12 @@ import {
   ClipboardCheck,
   GraduationCap,
   Wrench,
-  ChevronDown
+  ChevronDown,
+  Box,
+  AlertTriangle,
+  PieChart,
+  History,
+  CheckCircle
 } from 'lucide-react';
 
 interface NavItem {
@@ -31,7 +36,7 @@ interface NavItem {
 export default function AdminLayout() {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
-  const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'reports']);
 
   if (!loading && !user) {
     return <Navigate to="/login" replace />;
@@ -77,7 +82,19 @@ export default function AdminLayout() {
     { name: 'תיקי בטיחות', to: '/admin/safety/files', icon: Shield },
     { name: 'סקרים', to: '/admin/safety/surveys', icon: ClipboardCheck },
     { name: 'הדרכות', to: '/admin/safety/training', icon: GraduationCap },
-    { name: 'ציוד', to: '/admin/safety/equipment', icon: Wrench },
+  ];
+
+  // Phase 4 - Equipment Management
+  const equipmentNavigation: NavItem[] = [
+    { name: 'ציוד', to: '/admin/equipment', icon: Box },
+    { name: 'ממצאים', to: '/admin/findings', icon: AlertTriangle },
+  ];
+
+  // Phase 5 - Reports & Analytics
+  const reportsNavigation: NavItem[] = [
+    { name: 'אנליטיקות', to: '/admin/analytics', icon: PieChart },
+    { name: 'היסטוריית בדיקות', to: '/admin/reports/history', icon: History },
+    { name: 'ציות', to: '/admin/reports/compliance', icon: CheckCircle },
   ];
 
   const managementNavigation: NavItem[] = [
@@ -89,23 +106,27 @@ export default function AdminLayout() {
     { name: 'הגדרות', to: '/admin/settings', icon: Settings },
   ];
 
-  const NavSection = ({ title, items, sectionKey }: { title: string; items: NavItem[]; sectionKey: string }) => {
+  const NavSection = ({ title, items, sectionKey, color = 'indigo' }: { title: string; items: NavItem[]; sectionKey: string; color?: string }) => {
     const isExpanded = expandedSections.includes(sectionKey);
     
+    const colorClasses: Record<string, string> = {
+      indigo: 'bg-indigo-600 shadow-indigo-900/50',
+      emerald: 'bg-emerald-600 shadow-emerald-900/50',
+      cyan: 'bg-cyan-600 shadow-cyan-900/50',
+      amber: 'bg-amber-600 shadow-amber-900/50',
+      rose: 'bg-rose-600 shadow-rose-900/50',
+    };
+
     return (
       <div className="mb-2">
         <button
           onClick={() => toggleSection(sectionKey)}
           className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors"
         >
-          <span>{title}</span>
-          <ChevronDown 
-            size={14} 
-            className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
-          />
+          {title}
+          <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
         </button>
-        
-        <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'max-h-96' : 'max-h-0'}`}>
           {items.map((item) => (
             <NavLink
               key={item.name}
@@ -114,7 +135,7 @@ export default function AdminLayout() {
               className={({ isActive }) =>
                 `group flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 mx-2 ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                    ? `${colorClasses[color]} text-white shadow-lg`
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`
               }
@@ -184,10 +205,16 @@ export default function AdminLayout() {
           </div>
 
           {/* CRM Section */}
-          <NavSection title="CRM - מכירות" items={crmNavigation} sectionKey="crm" />
+          <NavSection title="CRM - מכירות" items={crmNavigation} sectionKey="crm" color="amber" />
           
           {/* Safety Section */}
-          <NavSection title="בטיחות" items={safetyNavigation} sectionKey="safety" />
+          <NavSection title="בטיחות" items={safetyNavigation} sectionKey="safety" color="rose" />
+          
+          {/* Equipment Section - Phase 4 */}
+          <NavSection title="ניהול ציוד" items={equipmentNavigation} sectionKey="equipment" color="emerald" />
+          
+          {/* Reports Section - Phase 5 */}
+          <NavSection title="דוחות" items={reportsNavigation} sectionKey="reports" color="cyan" />
           
           {/* Management Section */}
           <NavSection title="ניהול" items={managementNavigation} sectionKey="management" />

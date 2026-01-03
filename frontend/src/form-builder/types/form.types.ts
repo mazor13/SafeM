@@ -91,6 +91,8 @@ export interface FieldSettings {
   
   // Number fields
   step?: number;
+  min?: number;
+  max?: number;
   prefix?: string;
   suffix?: string;
   

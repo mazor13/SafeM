@@ -9,6 +9,7 @@
 import {
   SafetyDomain,
   FrequencyType,
+  RiskLevel,
   InspectorType,
   LegalSourceType,
   LaserEquipmentType,
@@ -223,7 +224,7 @@ export const FireInspectionRequirements: Record<string, InspectionRequirement[]>
       conditions: [
         {
           type: 'risk_level',
-          riskLevel: 'high',
+          riskLevel: RiskLevel.HIGH,
           newFrequency: {
             type: FrequencyType.SEMI_ANNUAL,
             intervalMonths: 6

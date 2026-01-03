@@ -15,6 +15,7 @@ export {
   downloadPDF,
   generateReportFilename,
 } from './components/PDFReportGenerator';
+
 export type {
   ReportData,
   ReportSection,
@@ -28,6 +29,7 @@ export {
   InspectionHistory, 
   InspectionHistoryStyles,
 } from './components/InspectionHistory';
+
 export type {
   InspectionHistoryItem,
   HistoryFilters,
@@ -39,6 +41,7 @@ export {
   AnalyticsDashboard, 
   AnalyticsDashboardStyles,
 } from './components/AnalyticsDashboard';
+
 export type {
   AnalyticsData,
   DateRange,
@@ -49,6 +52,7 @@ export {
   ClientPortal,
   ClientPortalStyles,
 } from './components/ClientPortal';
+
 export type {
   ClientPortalData,
   ClientEquipment,
@@ -73,6 +77,7 @@ export {
   ExcelExportStyles,
   EXPORT_CONFIGS,
 } from './services/ExcelExport';
+
 export type {
   ExportColumn,
   ExportOptions,
@@ -85,6 +90,7 @@ export {
   ComplianceReport,
   ComplianceReportStyles,
 } from './components/ComplianceReport';
+
 export type {
   ComplianceReportData,
   DomainCompliance,
@@ -93,40 +99,3 @@ export type {
   ComplianceDeadline,
   RegulatoryRequirement,
 } from './components/ComplianceReport';
-
-export {
-  ClientPortal,
-  ClientPortalStyles,
-} from './components/ClientPortal';
-export type {
-  ClientPortalData,
-  ClientEquipmentItem,
-  ClientInspectionItem,
-  ClientFindingItem,
-  ClientUpcomingItem,
-  ClientDocument,
-} from './components/ClientPortal';
-
-// Excel Export Utilities
-export {
-  exportToExcel,
-  exportToCSV,
-  downloadCSV,
-  exportEquipmentList,
-  exportInspectionsList,
-  exportFindingsList,
-  exportClientsList,
-  exportAnalyticsReport,
-  generateExportFilename,
-  getEquipmentExportConfig,
-  getInspectionsExportConfig,
-  getFindingsExportConfig,
-  getClientsExportConfig,
-  getAnalyticsSummaryExportConfig,
-} from './utils/excelExport';
-export type {
-  ExcelColumn,
-  ExcelSheet,
-  ExcelStyle,
-  ExcelExportOptions,
-} from './utils/excelExport';

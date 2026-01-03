@@ -31,13 +31,21 @@ import TemplatesListPage from './pages/admin/templates/TemplatesListPage';
 import TemplateDesigner from './pages/admin/templates/TemplateDesigner';
 import TemplatePreview from './pages/admin/templates/TemplatePreview';
 
-// Phase 4 - Equipment Pages
+// ============================================
+// Phase 4 - Equipment Management Pages
+// ============================================
 import EquipmentPage from './pages/admin/equipment/EquipmentPage';
 import EquipmentFormPage from './pages/admin/equipment/EquipmentFormPage';
+import LocationsPage from './pages/admin/equipment/LocationsPage';
+import InspectionsPage from './pages/admin/equipment/InspectionsPage';
+import InspectionExecutionPage from './pages/admin/equipment/InspectionExecutionPage';
 import FindingsPage from './pages/admin/equipment/FindingsPage';
 
-// Phase 5 - Reports Pages
+// ============================================
+// Phase 5 - Reports & Analytics Pages
+// ============================================
 import AnalyticsPage from './pages/admin/reports/AnalyticsPage';
+import ReportsPage from './pages/admin/reports/ReportsPage';
 import InspectionHistoryPage from './pages/admin/reports/InspectionHistoryPage';
 import CompliancePage from './pages/admin/reports/CompliancePage';
 
@@ -78,21 +86,43 @@ function App() {
           <Route path="crm/opportunities" element={<div className="p-10 text-slate-400">Opportunities (Coming Soon)</div>} />
           <Route path="crm/activities" element={<div className="p-10 text-slate-400">Activities (Coming Soon)</div>} />
           
-          {/* Safety Routes */}
+          {/* Safety Routes (Legacy) */}
           <Route path="safety/files" element={<SafetyFilesPage />} />
           <Route path="safety/files/new" element={<div className="p-10 text-slate-400">Create Safety File (Coming Soon)</div>} />
           <Route path="safety/files/:id" element={<div className="p-10 text-slate-400">Safety File Detail (Coming Soon)</div>} />
           <Route path="safety/surveys" element={<div className="p-10 text-slate-400">Surveys (Coming Soon)</div>} />
           <Route path="safety/training" element={<div className="p-10 text-slate-400">Training (Coming Soon)</div>} />
           
-          {/* Phase 4 - Equipment Management */}
+          {/* ============================================ */}
+          {/* Phase 4 - Equipment Management Routes */}
+          {/* ============================================ */}
+          
+          {/* Equipment */}
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="equipment/new" element={<EquipmentFormPage />} />
-          <Route path="equipment/:id/edit" element={<EquipmentFormPage />} />
+          <Route path="equipment/:equipmentId" element={<EquipmentFormPage />} />
+          <Route path="equipment/:equipmentId/edit" element={<EquipmentFormPage />} />
+          
+          {/* Locations */}
+          <Route path="locations" element={<LocationsPage />} />
+          
+          {/* Inspections */}
+          <Route path="inspections" element={<InspectionsPage />} />
+          <Route path="inspections/execute/:equipmentId" element={<InspectionExecutionPage />} />
+          <Route path="inspections/:inspectionId" element={<InspectionExecutionPage />} />
+          
+          {/* Findings */}
           <Route path="findings" element={<FindingsPage />} />
           
-          {/* Phase 5 - Reports & Analytics */}
+          {/* ============================================ */}
+          {/* Phase 5 - Reports & Analytics Routes */}
+          {/* ============================================ */}
+          
+          {/* Analytics Dashboard */}
           <Route path="analytics" element={<AnalyticsPage />} />
+          
+          {/* Reports */}
+          <Route path="reports" element={<ReportsPage />} />
           <Route path="reports/history" element={<InspectionHistoryPage />} />
           <Route path="reports/compliance" element={<CompliancePage />} />
           
@@ -100,11 +130,12 @@ function App() {
           <Route path="templates" element={<TemplatesListPage tenantId="system" />} />
           <Route path="templates/:templateId/edit" element={<TemplateDesigner />} />
           <Route path="templates/new" element={<TemplateDesigner />} />
-          <Route path="/admin/templates/:templateId/preview" element={<TemplatePreview />} />
+          <Route path="templates/:templateId/preview" element={<TemplatePreview />} />
           
           <Route path="settings" element={<div className="p-10 text-slate-400">System Settings (Coming Soon)</div>} />
           <Route path="products" element={<ProductManagement />} />
         </Route>
+        
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </AuthProvider>
