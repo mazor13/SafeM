@@ -41,12 +41,30 @@ import AnalyticsPage from './pages/admin/reports/AnalyticsPage';
 import InspectionHistoryPage from './pages/admin/reports/InspectionHistoryPage';
 import CompliancePage from './pages/admin/reports/CompliancePage';
 
+// Client Portal Pages
+import ClientDashboardLayout from './pages/client-dashboard/ClientDashboardLayout';
+import ClientOverview from './pages/client-dashboard/ClientOverview';
+import ClientEquipment from './pages/client-dashboard/ClientEquipment';
+import ClientInspections from './pages/client-dashboard/ClientInspections';
+import ClientDocuments from './pages/client-dashboard/ClientDocuments';
+import ClientFacilities from './pages/client-dashboard/ClientFacilities';
+
 function App() {
   return (
     <AuthProvider>
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        
+        {/* Client Portal Routes */}
+        <Route path="/portal/:clientId" element={<ClientDashboardLayout />}>
+          <Route index element={<ClientOverview />} />
+          <Route path="overview" element={<ClientOverview />} />
+          <Route path="equipment" element={<ClientEquipment />} />
+          <Route path="inspections" element={<ClientInspections />} />
+          <Route path="documents" element={<ClientDocuments />} />
+          <Route path="facilities" element={<ClientFacilities />} />
+        </Route>
         
         {/* Protected Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
