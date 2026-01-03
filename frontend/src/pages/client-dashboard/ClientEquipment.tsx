@@ -134,10 +134,11 @@ export default function ClientEquipment() {
   };
 
   const openModal = (item?: ExtendedEquipment) => {
+    console.log("openModal called with item:", JSON.stringify(item, null, 2));
     if (item) {
       setEditingId(item.id);
       setActiveTab('identity');
-      const toDateStr = (ts: any) => ts instanceof Timestamp ? ts.toDate().toISOString().split('T')[0] : (ts || '');
+      const toDateStr = (ts: any) => { if (!ts) return ''; if (ts.seconds) return new Date(ts.seconds * 1000).toISOString().split('T')[0]; if (ts.toDate) return ts.toDate().toISOString().split('T')[0]; return String(ts); };
 
       setFormData({
         name: item.name,
@@ -164,7 +165,7 @@ export default function ClientEquipment() {
       setFormData(initialFormState);
       setActiveTab('identity');
     }
-    setIsModalOpen(true);
+    console.log('Setting formData to:', formData); setIsModalOpen(true);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -370,7 +371,7 @@ export default function ClientEquipment() {
                      ) : '-'}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-medium">
-                    <button onClick={() => openModal(item)} className="text-indigo-600 hover:text-indigo-900"><PencilSquareIcon className="h-5 w-5" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); openModal(item); }} className="text-indigo-600 hover:text-indigo-900"><PencilSquareIcon className="h-5 w-5" /></button>
                   </td>
                 </tr>
               );
@@ -412,11 +413,11 @@ export default function ClientEquipment() {
                   {activeTab === 'identity' && (
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">שם הציוד *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">שם הציוד *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
                         
                         {/* DYNAMIC SELECT */}
                         <div><label className="block text-sm font-medium text-gray-700">סוג</label>
-                          <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="mt-1 block w-full border p-2 rounded">
+                          <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900">
                             {modules
                               .filter(mod => isModuleActive(mod.id))
                               .map(mod => (
@@ -427,16 +428,16 @@ export default function ClientEquipment() {
                         </div>
 
                         <div><label className="block text-sm font-medium text-gray-700">סטטוס</label>
-                          <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="mt-1 block w-full border p-2 rounded">
+                          <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900">
                             <option value="active">פעיל</option><option value="maintenance">בתיקון</option><option value="storage">באחסון</option>
                           </select>
                         </div>
-                        <div><label className="block text-sm font-medium text-gray-700">מיקום</label><input value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">מיקום</label><input value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
                       </div>
                       <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">יצרן / דגם</label><input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">מספר סידורי</label><input value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">בדיקה הבאה</label><input type="date" required value={formData.nextInspectionDate} onChange={e => setFormData({...formData, nextInspectionDate: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">יצרן / דגם</label><input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">מספר סידורי</label><input value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">בדיקה הבאה</label><input type="date" required value={formData.nextInspectionDate} onChange={e => setFormData({...formData, nextInspectionDate: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
                       </div>
                     </div>
                   )}
@@ -445,15 +446,15 @@ export default function ClientEquipment() {
                   {activeTab === 'procurement' && (
                     <div className="space-y-6">
                        <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">תאריך רכישה</label><input type="date" value={formData.purchaseDate} onChange={e => setFormData({...formData, purchaseDate: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">מחיר (₪)</label><input type="number" value={formData.purchasePrice} onChange={e => setFormData({...formData, purchasePrice: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">ספק</label><input value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">מספר הזמנה (PO)</label><input value={formData.orderNumber} onChange={e => setFormData({...formData, orderNumber: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">תאריך רכישה</label><input type="date" value={formData.purchaseDate} onChange={e => setFormData({...formData, purchaseDate: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">מחיר (₪)</label><input type="number" value={formData.purchasePrice} onChange={e => setFormData({...formData, purchasePrice: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">ספק</label><input value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">מספר הזמנה (PO)</label><input value={formData.orderNumber} onChange={e => setFormData({...formData, orderNumber: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
                        </div>
                        <hr className="my-2"/>
                        <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">שם נותן שירות</label><input value={formData.serviceName} onChange={e => setFormData({...formData, serviceName: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">תוקף חוזה שירות</label><input type="date" value={formData.contractExpires} onChange={e => setFormData({...formData, contractExpires: e.target.value})} className="mt-1 block w-full border p-2 rounded" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">שם נותן שירות</label><input value={formData.serviceName} onChange={e => setFormData({...formData, serviceName: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700">תוקף חוזה שירות</label><input type="date" value={formData.contractExpires} onChange={e => setFormData({...formData, contractExpires: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
                        </div>
                     </div>
                   )}
@@ -470,13 +471,13 @@ export default function ClientEquipment() {
                         <div key={idx} className="bg-white p-4 rounded border border-gray-200 flex flex-col gap-3 shadow-sm relative">
                            <div className="absolute top-4 left-4 text-xs font-bold text-gray-400">#{idx + 1}</div>
                            <div className="grid grid-cols-4 gap-4">
-                             <div><label className="text-xs text-gray-500">תאריך</label><input type="date" value={event.date} onChange={e => updateHistoryEvent(idx, 'date', e.target.value)} className="w-full text-sm border-b" /></div>
+                             <div><label className="text-xs text-gray-500">תאריך</label><input type="date" value={event.date} onChange={e => updateHistoryEvent(idx, 'date', e.target.value)} className="w-full text-sm border-b bg-white text-gray-900" /></div>
                              <div><label className="text-xs text-gray-500">סוג</label>
-                               <select value={event.type} onChange={e => updateHistoryEvent(idx, 'type', e.target.value)} className="w-full text-sm border-b bg-transparent">
+                               <select value={event.type} onChange={e => updateHistoryEvent(idx, 'type', e.target.value)} className="w-full text-sm border-b bg-white text-gray-900">
                                  <option value="repair">תיקון</option><option value="maintenance">אחזקה</option><option value="calibration">כיול</option>
                                </select>
                              </div>
-                             <div><label className="text-xs text-gray-500">עלות</label><input type="number" value={event.cost} onChange={e => updateHistoryEvent(idx, 'cost', e.target.value)} className="w-full text-sm font-bold text-red-600 border-b" /></div>
+                             <div><label className="text-xs text-gray-500">עלות</label><input type="number" value={event.cost} onChange={e => updateHistoryEvent(idx, 'cost', e.target.value)} className="w-full text-sm font-bold text-red-600 border-b bg-white" /></div>
                              
                              <div className="flex items-end">
                                {event.documentUrl ? (
@@ -491,7 +492,7 @@ export default function ClientEquipment() {
                                )}
                              </div>
                            </div>
-                           <input placeholder="תיאור העבודה..." value={event.description} onChange={e => updateHistoryEvent(idx, 'description', e.target.value)} className="w-full text-sm border p-1 rounded bg-gray-50" />
+                           <input placeholder="תיאור העבודה..." value={event.description} onChange={e => updateHistoryEvent(idx, 'description', e.target.value)} className="w-full text-sm border p-1 rounded bg-white text-gray-900" />
                         </div>
                       ))}
                     </div>

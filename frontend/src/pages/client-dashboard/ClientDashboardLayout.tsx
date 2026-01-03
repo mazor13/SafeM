@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { ClientProvider, useClient } from '../../providers/ClientProvider';
+import { SystemProvider } from '../../providers/SystemProvider';
 import { 
   HomeIcon, 
   BuildingOfficeIcon, 
@@ -32,7 +33,7 @@ const DashboardContent = () => {
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
       <div className="w-64 bg-white border-l border-gray-200 flex flex-col hidden md:flex">
         <div className="p-4 border-b border-gray-100">
-          <Link to="/clients" className="text-xs text-indigo-600 flex items-center mb-2 hover:underline">
+          <Link to="/admin/clients" className="text-xs text-indigo-600 flex items-center mb-2 hover:underline">
             <ArrowLeftIcon className="h-3 w-3 ml-1" />
             חזרה לרשימת הלקוחות
           </Link>
@@ -73,8 +74,10 @@ const DashboardContent = () => {
 
 export default function ClientDashboardLayout() {
   return (
-    <ClientProvider>
-      <DashboardContent />
-    </ClientProvider>
+    <SystemProvider>
+      <ClientProvider>
+        <DashboardContent />
+      </ClientProvider>
+    </SystemProvider>
   );
 }
