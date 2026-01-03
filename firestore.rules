@@ -222,5 +222,88 @@ service cloud.firestore {
       allow update: if isAuthenticated() && resourceBelongsToUserTenant();
       allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
     }
+    // ============================================
+    // Clients Collection (Tenant's Customers)
+    // ============================================
+    
+    // Helper: Check if user is a client user for this specific client
+    function isClientUser(clientId) {
+      return isAuthenticated() && getUserData().clientId == clientId;
+    }
+    
+    // Helper: Check if client belongs to user's tenant
+    function clientBelongsToUserTenant(clientId) {
+      return get(/databases/$(database)/documents/clients/$(clientId)).data.tenantId == getUserData().tenantId;
+    }
+    
+    // Clients
+    match /clients/{clientId} {
+      // Tenant users can read their clients, client users can read their own
+      allow read: if isAuthenticated() && (
+        clientBelongsToUserTenant(clientId) ||
+        isClientUser(clientId)
+      );
+      // Only tenant admins can create/update clients
+      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
+      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
+      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+      
+      // Equipment sub-collection
+      match /equipment/{equipmentId} {
+        // Tenant users can read all, client users can read their own
+        allow read: if isAuthenticated() && (
+          clientBelongsToUserTenant(clientId) ||
+          isClientUser(clientId)
+        );
+        // Tenant safety officers can create/update/delete
+        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
+        allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
+        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
+      }
+      
+      // Inspections sub-collection
+      match /inspections/{inspectionId} {
+        allow read: if isAuthenticated() && (
+          clientBelongsToUserTenant(clientId) ||
+          isClientUser(clientId)
+        );
+        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
+        allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
+        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
+      }
+      
+      // Findings sub-collection
+      match /findings/{findingId} {
+        allow read: if isAuthenticated() && (
+          clientBelongsToUserTenant(clientId) ||
+          isClientUser(clientId)
+        );
+        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
+        allow update: if isAuthenticated() && (
+          clientBelongsToUserTenant(clientId) ||
+          isClientUser(clientId)  // Client can update finding status
+        );
+        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
+      }
+      
+      // Documents sub-collection
+      match /documents/{documentId} {
+        allow read: if isAuthenticated() && (
+          clientBelongsToUserTenant(clientId) ||
+          isClientUser(clientId)
+        );
+        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId);
+        allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId);
+        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
+      }
+    }
+
+    // System Modules (for dynamic module loading)
+    match /system_modules/{moduleId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('super_admin');
+    }
+
+
   }
 }
