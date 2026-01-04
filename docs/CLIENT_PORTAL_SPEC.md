@@ -210,3 +210,87 @@
 
 *מסמך זה נוצר: 03/01/2026*
 *גרסה: 1.0*
+
+---
+
+## 9. מדיניות הכנסת ציוד
+
+### סוגי ציוד וסיווג קריטיות (ברירת מחדל):
+
+| סוג | ID | קריטי | הערות |
+|-----|-----|-------|-------|
+| בטיחות לייזר | `laser` | 🔴 כן | דורש אישור יועץ |
+| חומרים מסוכנים | `chemical` | 🔴 כן | דורש אישור יועץ |
+| קרינה | `radiation` | 🔴 כן | דורש אישור יועץ |
+| מתקני הרמה | `lifting` | 🔴 כן | דורש אישור יועץ |
+| אביזרי הרמה | `lifting_accessories` | 🔴 כן | דורש אישור יועץ |
+| מלגזות | `forklift` | 🔴 כן | דורש אישור יועץ |
+| כיבוי אש | `fire` | 🟢 לא | לקוח יכול להוסיף |
+| בטיחות כללית | `general` | 🟢 לא | לקוח יכול להוסיף |
+| חשמל | `electrical` | 🟡 תלוי | לפי הגדרת יועץ |
+
+### תהליך הכנסת ציוד ע"י לקוח:
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│    לקוח         │     │   המערכת       │     │    יועץ         │
+│  מוסיף ציוד     │────▶│  בודקת סוג     │────▶│  (אם קריטי)     │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                               │                        │
+                    ┌──────────┴──────────┐            │
+                    ▼                     ▼            │
+              ┌──────────┐         ┌──────────┐       │
+              │ לא קריטי │         │  קריטי   │       │
+              │  active  │         │ pending  │───────┘
+              └──────────┘         │ approval │
+                                   └──────────┘
+                                         │
+                           ┌─────────────┴─────────────┐
+                           ▼                           ▼
+                     ┌──────────┐               ┌──────────┐
+                     │  אישור  │               │  דחייה  │
+                     │  active  │               │ rejected │
+                     │ + התראה  │               │ + סיבה   │
+                     │  ללקוח   │               │ + התראה  │
+                     └──────────┘               └──────────┘
+```
+
+### מבנה נתונים - מדיניות ציוד (Per Tenant):
+```javascript
+// tenants/{tenantId}/settings/equipment_policy
+{
+  allowClientToAddEquipment: true,      // האם לקוח יכול להוסיף בכלל
+  criticalTypes: [                       // סוגים קריטיים
+    "laser", 
+    "chemical", 
+    "radiation", 
+    "lifting",
+    "lifting_accessories",
+    "forklift"
+  ],
+  requireApprovalForTypes: [             // דורש אישור (תת-קבוצה של קריטי)
+    "laser", 
+    "lifting"
+  ],
+  clientCanAddTypes: null,               // null = הכל, או רשימה ספציפית
+  notifyOnNewEquipment: true,            // התראה ליועץ על כל ציוד חדש
+  notifyEmail: "consultant@example.com"
+}
+```
+
+### שדות חדשים ב-Equipment:
+```javascript
+{
+  // ... שדות קיימים
+  isCritical: boolean,           // האם ציוד קריטי
+  approvalStatus: "approved" | "pending" | "rejected",
+  approvalDate: Timestamp,
+  approvedBy: string,            // uid של המאשר
+  rejectionReason: string,       // סיבת דחייה
+  addedBy: string,               // uid של מי שהוסיף
+  addedByRole: "consultant" | "client"
+}
+```
+
+---
+
+*עודכן: 04/01/2026*
