@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { firestore as db } from '../../firebase';
+import { collection, getDocs, query, orderBy, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { firestore as db, auth } from '../../firebase';
 import { useRole } from '../../providers/RoleProvider';
 import { Finding, FindingSeverity, FindingStatus } from '../../types/finding';
 import {
@@ -10,7 +10,9 @@ import {
   ClockIcon,
   XCircleIcon,
   FunnelIcon,
-  DocumentMagnifyingGlassIcon
+  DocumentMagnifyingGlassIcon,
+  CameraIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const severityConfig: Record<FindingSeverity, { label: string; color: string; bgColor: string }> = {
@@ -30,7 +32,7 @@ const statusConfig: Record<FindingStatus, { label: string; color: string; bgColo
 
 export default function ClientFindings() {
   const { clientId } = useParams<{ clientId: string }>();
-  const { can, isClient } = useRole();
+  const { can } = useRole();
   
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,12 @@ export default function ClientFindings() {
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Treatment form state
+  const [treatmentDescription, setTreatmentDescription] = useState('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchFindings = async () => {
@@ -90,7 +98,107 @@ export default function ClientFindings() {
 
   const openTreatmentModal = (finding: Finding) => {
     setSelectedFinding(finding);
+    setTreatmentDescription(finding.treatment?.description || '');
+    setSelectedImages([]);
+    setImagePreviewUrls([]);
     setIsModalOpen(true);
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    const newFiles = Array.from(files);
+    const validFiles = newFiles.filter(file => {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        alert('נא לבחור קובץ תמונה בלבד');
+        return false;
+      }
+      // Check file size (5MB max before compression)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('גודל הקובץ חייב להיות עד 10MB');
+        return false;
+      }
+      return true;
+    });
+    
+    setSelectedImages(prev => [...prev, ...validFiles]);
+    
+    // Create preview URLs
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewUrls(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitTreatment = async () => {
+    if (!clientId || !selectedFinding) return;
+    if (!treatmentDescription.trim()) {
+      alert('נא למלא תיאור טיפול');
+      return;
+    }
+    
+    setSaving(true);
+    
+    try {
+      const currentUser = auth.currentUser;
+      
+      // TODO: Upload images to Firebase Storage in TASK-020
+      // For now, we'll save without images
+      
+      const updateData = {
+        status: 'pending_approval' as FindingStatus,
+        treatment: {
+          description: treatmentDescription,
+          treatedBy: currentUser?.uid || 'unknown',
+          treatedByName: currentUser?.email || 'לקוח',
+          treatedDate: Timestamp.now(),
+          images: [], // Will be populated in TASK-020
+        },
+        updatedAt: Timestamp.now(),
+        history: [
+          ...(selectedFinding.history || []),
+          {
+            action: 'treated' as const,
+            by: currentUser?.uid || 'unknown',
+            byName: currentUser?.email || 'לקוח',
+            date: Timestamp.now(),
+            details: treatmentDescription,
+          }
+        ]
+      };
+      
+      await updateDoc(doc(db, 'clients', clientId, 'findings', selectedFinding.id), updateData);
+      
+      // Update local state
+      setFindings(prev => prev.map(f => 
+        f.id === selectedFinding.id 
+          ? { ...f, ...updateData } 
+          : f
+      ));
+      
+      setIsModalOpen(false);
+      setTreatmentDescription('');
+      setSelectedImages([]);
+      setImagePreviewUrls([]);
+      
+      alert('הטיפול נשלח לאישור היועץ');
+      
+    } catch (err) {
+      console.error('Error updating finding:', err);
+      alert('שגיאה בשמירת הטיפול');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -278,25 +386,118 @@ export default function ClientFindings() {
         )}
       </div>
 
-      {/* Treatment Modal - Placeholder for TASK-019 */}
+      {/* Treatment Modal */}
       {isModalOpen && selectedFinding && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-lg" dir="rtl">
-            <h2 className="text-xl font-bold mb-4 text-gray-900">עדכון טיפול</h2>
-            <p className="text-gray-600 mb-4">{selectedFinding.title}</p>
-            
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                🚧 פונקציונליות זו תושלם ב-TASK-019
-              </p>
+          <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">עדכון טיפול</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
             </div>
             
-            <div className="flex justify-end">
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Finding Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-bold text-gray-900">{selectedFinding.title}</h3>
+                <p className="text-sm text-gray-600 mt-1">{selectedFinding.description}</p>
+                <div className="flex gap-2 mt-2">
+                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${severityConfig[selectedFinding.severity].bgColor} ${severityConfig[selectedFinding.severity].color}`}>
+                    {severityConfig[selectedFinding.severity].label}
+                  </span>
+                  {selectedFinding.location && (
+                    <span className="text-xs text-gray-500">📍 {selectedFinding.location}</span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Treatment Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  תיאור הטיפול שבוצע *
+                </label>
+                <textarea
+                  value={treatmentDescription}
+                  onChange={(e) => setTreatmentDescription(e.target.value)}
+                  rows={4}
+                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="תאר את הפעולות שבוצעו לתיקון הממצא..."
+                  required
+                />
+              </div>
+              
+              {/* Image Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  תמונות הוכחה (אופציונלי)
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-indigo-400 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <label htmlFor="image-upload" className="cursor-pointer">
+                    <CameraIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">לחץ להעלאת תמונות</p>
+                    <p className="text-xs text-gray-400 mt-1">JPG, PNG עד 10MB</p>
+                  </label>
+                </div>
+                
+                {/* Image Previews */}
+                {imagePreviewUrls.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {imagePreviewUrls.map((url, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="h-20 w-20 object-cover rounded-lg border"
+                        />
+                        <button
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Info Note */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  💡 לאחר השליחה, הממצא יעבור לסטטוס "ממתין לאישור" והיועץ יקבל התראה לבדיקה.
+                </p>
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3">
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                disabled={saving}
               >
-                סגור
+                ביטול
+              </button>
+              <button
+                onClick={handleSubmitTreatment}
+                disabled={saving || !treatmentDescription.trim()}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'שומר...' : 'שלח לאישור יועץ'}
               </button>
             </div>
           </div>
