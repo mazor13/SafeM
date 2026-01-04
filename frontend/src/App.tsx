@@ -48,6 +48,7 @@ import ClientDashboardLayout from './pages/client-dashboard/ClientDashboardLayou
 import ClientOverview from './pages/client-dashboard/ClientOverview';
 import ClientEquipment from './pages/client-dashboard/ClientEquipment';
 import ClientInspections from './pages/client-dashboard/ClientInspections';
+import ClientFindings from './pages/client-dashboard/ClientFindings';
 import ClientDocuments from './pages/client-dashboard/ClientDocuments';
 import ClientFacilities from './pages/client-dashboard/ClientFacilities';
 
@@ -69,6 +70,7 @@ function App() {
           <Route path="overview" element={<ClientOverview />} />
           <Route path="equipment" element={<ClientEquipment />} />
           <Route path="inspections" element={<ClientInspections />} />
+          <Route path="findings" element={<ClientFindings />} />
           <Route path="documents" element={<ClientDocuments />} />
           <Route path="facilities" element={<ClientFacilities />} />
         </Route>
