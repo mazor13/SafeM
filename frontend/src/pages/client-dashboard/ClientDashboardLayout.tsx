@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { ClientProvider, useClient } from '../../providers/ClientProvider';
 import { SystemProvider } from '../../providers/SystemProvider';
 import { ThemeProvider, useTheme } from '../../providers/ThemeProvider';
+import { RoleProvider, useRole } from '../../providers/RoleProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import { 
   HomeIcon, 
@@ -15,11 +16,12 @@ import {
   UserCircleIcon,
   SunIcon,
   MoonIcon,
-  ComputerDesktopIcon
+  ComputerDesktopIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 const ThemeSwitcher = () => {
-  const { theme, setTheme, resolvedTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const themes = [
     { id: 'dark', label: 'כהה', icon: MoonIcon },
@@ -51,6 +53,7 @@ const DashboardContent = () => {
   const { client, loading, error } = useClient();
   const { user, logout } = useAuth();
   const { resolvedTheme } = useTheme();
+  const { isConsultant, isClient, role } = useRole();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -68,9 +71,18 @@ const DashboardContent = () => {
     { name: 'מתחמים', href: 'facilities', icon: BuildingOfficeIcon, end: false },
     { name: 'ציוד ונכסים', href: 'equipment', icon: WrenchScrewdriverIcon, end: false },
     { name: 'בדיקות', href: 'inspections', icon: ClipboardDocumentCheckIcon, end: false },
+    { name: 'ממצאים', href: 'findings', icon: ExclamationTriangleIcon, end: false },
     { name: 'מסמכים', href: 'documents', icon: DocumentTextIcon, end: false },
     ...(showPersonnel ? [{ name: 'עובדים והדרכות', href: 'personnel', icon: UsersIcon, end: false }] : []),
   ];
+
+  // תצוגת תפקיד
+  const getRoleDisplay = () => {
+    if (isConsultant) return { label: 'יועץ', color: 'bg-purple-100 text-purple-800' };
+    if (isClient) return { label: 'לקוח', color: 'bg-blue-100 text-blue-800' };
+    return { label: role || 'משתמש', color: 'bg-gray-100 text-gray-800' };
+  };
+  const roleDisplay = getRoleDisplay();
 
   return (
     <div className={`flex h-screen ${resolvedTheme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
@@ -91,9 +103,14 @@ const DashboardContent = () => {
           <h2 className={`font-bold truncate ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`} title={client.name}>
             {client.name}
           </h2>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mt-1">
-            {client.contractDetails?.status === 'active' ? 'פעיל' : 'לא פעיל'}
-          </span>
+          <div className="flex gap-2 mt-1">
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+              {client.contractDetails?.status === 'active' ? 'פעיל' : 'לא פעיל'}
+            </span>
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${roleDisplay.color}`}>
+              {roleDisplay.label}
+            </span>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -158,11 +175,13 @@ const DashboardContent = () => {
 export default function ClientDashboardLayout() {
   return (
     <ThemeProvider>
-      <SystemProvider>
-        <ClientProvider>
-          <DashboardContent />
-        </ClientProvider>
-      </SystemProvider>
+      <RoleProvider>
+        <SystemProvider>
+          <ClientProvider>
+            <DashboardContent />
+          </ClientProvider>
+        </SystemProvider>
+      </RoleProvider>
     </ThemeProvider>
   );
 }

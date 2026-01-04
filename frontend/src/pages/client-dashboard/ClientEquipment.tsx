@@ -1,335 +1,291 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { collection, getDocs, addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { firestore as db, storage } from '../../firebase';
-import { Equipment, ModuleType } from '../../types';
-import { useClient } from '../../providers/ClientProvider';
-import { useAuth } from '../../providers/AuthProvider';
+import { firestore as db, auth } from '../../firebase';
 import { useSystem } from '../../providers/SystemProvider';
-
-// ייבוא מפורש של כל האייקונים כדי למנוע שגיאות TypeScript
-import { 
-  WrenchScrewdriverIcon, 
-  PlusIcon, 
-  FunnelIcon, 
-  FireIcon, 
-  BoltIcon, 
-  ShieldCheckIcon,
-  XMarkIcon,
+import { useRole } from '../../providers/RoleProvider';
+import { isCriticalType, EQUIPMENT_TYPES, APPROVAL_STATUS } from '../../config/equipmentTypes';
+import {
+  PlusIcon,
   PencilSquareIcon,
-  MapPinIcon,
-  DocumentTextIcon,
-  BanknotesIcon,
+  WrenchScrewdriverIcon,
+  BeakerIcon,
+  FireIcon,
+  BoltIcon,
+  ExclamationTriangleIcon,
   ClockIcon,
-  PaperClipIcon,
-  ArrowPathIcon,
-  CubeIcon,
-  BeakerIcon
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 
-interface AssetEvent {
+interface Equipment {
   id: string;
-  date: string;
-  type: 'repair' | 'maintenance' | 'calibration' | 'inspection' | 'other';
-  description: string;
-  cost: number;
-  currency: 'ILS' | 'USD' | 'EUR';
-  providerName: string;
-  documentRef?: string;
-  documentUrl?: string;
-  documentName?: string;
+  name: string;
+  type: string;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+  location?: string;
+  status: 'active' | 'maintenance' | 'retired';
+  nextInspectionDate?: Date;
+  lastInspectionDate?: Date;
+  tco?: number;
+  isCritical?: boolean;
+  approvalStatus?: "approved" | "pending" | "rejected";
+  historyLog?: any[];
 }
 
-interface ExtendedEquipment extends Equipment {
-  location?: string;
-  purchaseInfo?: {
-    date: string;
-    price: number;
-    currency: 'ILS' | 'USD' | 'EUR';
-    vendor: string;
-    orderNumber: string;
-    fundingSource?: 'capex' | 'opex';
-  };
-  serviceProvider?: {
-    name: string;
-    phone: string;
-    email: string;
-    contractExpires?: string;
-  };
-  historyLog?: AssetEvent[];
-}
+const typeIcons: Record<string, any> = {
+  laser: BoltIcon,
+  fire: FireIcon,
+  general: WrenchScrewdriverIcon,
+  chemical: BeakerIcon,
+  radiation: ExclamationTriangleIcon,
+  lifting: WrenchScrewdriverIcon,
+  lifting_accessories: WrenchScrewdriverIcon,
+  forklift: WrenchScrewdriverIcon,
+  electrical: BoltIcon,
+};
 
 export default function ClientEquipment() {
   const { clientId } = useParams<{ clientId: string }>();
-  const { client } = useClient();
-  const { user } = useAuth();
-  const { modules, loading: systemLoading } = useSystem();
+  const { modules } = useSystem();
+  const { can, isConsultant, isClient } = useRole();
   
-  const [equipmentList, setEquipmentList] = useState<ExtendedEquipment[]>([]);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState<string>('all');
-  
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'identity' | 'procurement' | 'history'>('identity');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentEventIndex, setCurrentEventIndex] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<Equipment | null>(null);
 
-  const initialFormState = {
-    name: '', type: 'safety', model: '', serialNumber: '', location: '', status: 'active', nextInspectionDate: new Date().toISOString().split('T')[0],
-    purchaseDate: '', purchasePrice: 0, currency: 'ILS', vendor: '', orderNumber: '', fundingSource: 'opex',
-    serviceName: '', servicePhone: '', serviceEmail: '', contractExpires: '',
-    historyLog: [] as AssetEvent[]
-  };
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'general',
+    manufacturer: '',
+    model: '',
+    serialNumber: '',
+    location: '',
+    status: 'active' as 'active' | 'maintenance' | 'retired',
+    nextInspectionDate: '',
+    tco: 0,
+    isCritical: false,
+  });
 
-  const [formData, setFormData] = useState<any>(initialFormState);
+  // Check if selected type is critical
+  const isSelectedTypeCritical = isCriticalType(formData.type);
+  const showCriticalWarning = isClient && isSelectedTypeCritical && !editingItem;
 
-  // --- Dynamic Icon Helper ---
-  const getModuleIcon = (iconKey: string) => {
-    const map: Record<string, React.ElementType> = {
-      bolt: BoltIcon,
-      fire: FireIcon,
-      wrench: WrenchScrewdriverIcon,
-      beaker: BeakerIcon,
-      shield: ShieldCheckIcon
+  useEffect(() => {
+    const fetchEquipment = async () => {
+      if (!clientId) return;
+      try {
+        const ref = collection(db, 'clients', clientId, 'equipment');
+        const snapshot = await getDocs(ref);
+        const items = snapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            nextInspectionDate: data.nextInspectionDate?.seconds 
+              ? new Date(data.nextInspectionDate.seconds * 1000)
+              : data.nextInspectionDate ? new Date(data.nextInspectionDate) : undefined,
+            lastInspectionDate: data.lastInspectionDate?.seconds
+              ? new Date(data.lastInspectionDate.seconds * 1000)
+              : data.lastInspectionDate ? new Date(data.lastInspectionDate) : undefined,
+          } as Equipment;
+        });
+        setEquipment(items);
+      } catch (err) {
+        console.error('Error fetching equipment:', err);
+      } finally {
+        setLoading(false);
+      }
     };
-    return map[iconKey] || CubeIcon;
+    fetchEquipment();
+  }, [clientId]);
+
+  const activeModules = modules.filter(m => m.isActive);
+  
+  // Build filter options from EQUIPMENT_TYPES
+  const filterOptions = [
+    { id: 'all', label: 'הכל', icon: WrenchScrewdriverIcon },
+    ...Object.values(EQUIPMENT_TYPES).map(t => ({
+      id: t.id,
+      label: t.label,
+      icon: typeIcons[t.id] || WrenchScrewdriverIcon
+    }))
+  ];
+
+  const filteredEquipment = activeFilter === 'all' 
+    ? equipment 
+    : equipment.filter(e => e.type === activeFilter);
+
+  const toDateStr = (ts: any) => {
+    if (!ts) return '';
+    if (ts.seconds) return new Date(ts.seconds * 1000).toISOString().split('T')[0];
+    if (ts.toDate) return ts.toDate().toISOString().split('T')[0];
+    if (ts instanceof Date) return ts.toISOString().split('T')[0];
+    return String(ts);
   };
 
-  // --- GATEKEEPER LOGIC ---
-  const isModuleActive = (moduleId: string) => {
-    // זמני: פותח הכל כדי שתוכל לראות את המערכת כמנהל על
-    return true; 
-  };
-
-  const fetchEquipment = async () => {
-    if (!clientId) return;
-    try {
-      const q = collection(db, 'clients', clientId, 'equipment');
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ExtendedEquipment[];
-      setEquipmentList(data);
-    } catch (error) {
-      console.error("Error fetching equipment:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchEquipment(); }, [clientId]);
-
-  const calculateTCO = (item: ExtendedEquipment) => {
-    let total = item.purchaseInfo?.price || 0;
-    if (item.historyLog) {
-      item.historyLog.forEach(event => total += Number(event.cost || 0));
-    }
-    return total;
-  };
-
-  const openModal = (item?: ExtendedEquipment) => {
-    console.log("openModal called with item:", JSON.stringify(item, null, 2));
+  const openModal = (item?: Equipment) => {
     if (item) {
-      setEditingId(item.id);
-      setActiveTab('identity');
-      const toDateStr = (ts: any) => { if (!ts) return ''; if (ts.seconds) return new Date(ts.seconds * 1000).toISOString().split('T')[0]; if (ts.toDate) return ts.toDate().toISOString().split('T')[0]; return String(ts); };
-
+      setEditingItem(item);
       setFormData({
         name: item.name,
         type: item.type,
+        manufacturer: item.manufacturer || '',
         model: item.model || '',
         serialNumber: item.serialNumber || '',
         location: item.location || '',
         status: item.status,
         nextInspectionDate: toDateStr(item.nextInspectionDate),
-        purchaseDate: item.purchaseInfo?.date || '',
-        purchasePrice: item.purchaseInfo?.price || 0,
-        currency: item.purchaseInfo?.currency || 'ILS',
-        vendor: item.purchaseInfo?.vendor || '',
-        orderNumber: item.purchaseInfo?.orderNumber || '',
-        fundingSource: item.purchaseInfo?.fundingSource || 'opex',
-        serviceName: item.serviceProvider?.name || '',
-        servicePhone: item.serviceProvider?.phone || '',
-        serviceEmail: item.serviceProvider?.email || '',
-        contractExpires: item.serviceProvider?.contractExpires || '',
-        historyLog: item.historyLog || []
+        tco: item.tco || 0,
+        isCritical: item.isCritical || false,
       });
     } else {
-      setEditingId(null);
-      setFormData(initialFormState);
-      setActiveTab('identity');
+      setEditingItem(null);
+      setFormData({
+        name: '',
+        type: 'general',
+        manufacturer: '',
+        model: '',
+        serialNumber: '',
+        location: '',
+        status: 'active',
+        nextInspectionDate: '',
+        tco: 0,
+        isCritical: false,
+      });
     }
-    console.log('Setting formData to:', formData); setIsModalOpen(true);
+    setIsModalOpen(true);
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && currentEventIndex !== null && clientId) {
-      const file = e.target.files[0];
-      setUploadingFile(true);
-      try {
-        const storagePath = `documents/clients/${clientId}/equipment_history/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, storagePath);
-        await uploadBytes(storageRef, file);
-        const downloadUrl = await getDownloadURL(storageRef);
-
-        const updatedLog = [...formData.historyLog];
-        updatedLog[currentEventIndex] = {
-          ...updatedLog[currentEventIndex],
-          documentUrl: downloadUrl,
-          documentName: file.name
-        };
-        setFormData({ ...formData, historyLog: updatedLog });
-      } catch (error) {
-        console.error("Upload failed", error);
-        alert("שגיאה בהעלאת הקובץ");
-      } finally {
-        setUploadingFile(false);
-        setCurrentEventIndex(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const triggerFileUpload = (index: number) => {
-    setCurrentEventIndex(index);
-    fileInputRef.current?.click();
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clientId || !client) return;
-    setIsSubmitting(true);
+  const handleSave = async () => {
+    if (!clientId) return;
     
     try {
-      const equipmentData: any = {
-        name: formData.name,
-        type: formData.type,
-        model: formData.model,
-        serialNumber: formData.serialNumber,
-        location: formData.location,
-        status: formData.status,
-        organizationId: client.organizationId, 
-        clientId: clientId,
-        nextInspectionDate: Timestamp.fromDate(new Date(formData.nextInspectionDate)),
-        purchaseInfo: {
-          date: formData.purchaseDate,
-          price: Number(formData.purchasePrice),
-          currency: formData.currency,
-          vendor: formData.vendor,
-          orderNumber: formData.orderNumber,
-          fundingSource: formData.fundingSource
-        },
-        serviceProvider: {
-          name: formData.serviceName,
-          phone: formData.servicePhone,
-          email: formData.serviceEmail,
-          contractExpires: formData.contractExpires
-        },
-        historyLog: formData.historyLog
+      const currentUser = auth.currentUser;
+      const isCritical = isCriticalType(formData.type) || formData.isCritical;
+      
+      // Determine approval status
+      let approvalStatus: 'approved' | 'pending' | 'rejected' = 'approved';
+      if (isClient && isCritical && !editingItem) {
+        // Client adding critical equipment - needs approval
+        approvalStatus = 'pending';
+      }
+
+      const dataToSave = {
+        ...formData,
+        isCritical,
+        approvalStatus,
+        nextInspectionDate: formData.nextInspectionDate 
+          ? Timestamp.fromDate(new Date(formData.nextInspectionDate))
+          : null,
+        updatedAt: Timestamp.now(),
+        ...(editingItem ? {} : {
+          addedBy: currentUser?.uid,
+          addedByRole: isClient ? 'client' : 'consultant',
+          createdAt: Timestamp.now(),
+        }),
       };
 
-      if (editingId) {
-        await updateDoc(doc(db, 'clients', clientId, 'equipment', editingId), equipmentData);
+      if (editingItem) {
+        await updateDoc(doc(db, 'clients', clientId, 'equipment', editingItem.id), dataToSave);
+        setEquipment(prev => prev.map(e => e.id === editingItem.id ? { 
+          ...e, 
+          ...formData,
+          isCritical,
+          approvalStatus,
+          nextInspectionDate: formData.nextInspectionDate ? new Date(formData.nextInspectionDate) : undefined
+        } : e));
       } else {
-        equipmentData.createdAt = Timestamp.now();
-        await addDoc(collection(db, 'clients', clientId, 'equipment'), equipmentData);
+        const docRef = await addDoc(collection(db, 'clients', clientId, 'equipment'), dataToSave);
+        setEquipment(prev => [...prev, { 
+          id: docRef.id, 
+          ...formData,
+          isCritical,
+          approvalStatus,
+          nextInspectionDate: formData.nextInspectionDate ? new Date(formData.nextInspectionDate) : undefined
+        } as Equipment]);
       }
       setIsModalOpen(false);
-      await fetchEquipment();
-    } catch (e) {
-      console.error("Error saving:", e);
-      alert("שגיאה בשמירה");
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      console.error('Error saving equipment:', err);
     }
   };
 
-  const addHistoryEvent = () => {
-    const newEvent: AssetEvent = {
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      type: 'repair',
-      description: '',
-      cost: 0,
-      currency: 'ILS',
-      providerName: ''
-    };
-    setFormData({ ...formData, historyLog: [newEvent, ...formData.historyLog] });
+  const canAddEquipment = can('canAddEquipment');
+  const canEditEquipment = can('canEditEquipment');
+
+  const getApprovalBadge = (status?: string) => {
+    switch (status) {
+      case APPROVAL_STATUS.PENDING:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+            <ClockIcon className="h-3 w-3" />
+            ממתין לאישור
+          </span>
+        );
+      case APPROVAL_STATUS.REJECTED:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+            <XCircleIcon className="h-3 w-3" />
+            נדחה
+          </span>
+        );
+      default:
+        return null;
+    }
   };
 
-  const updateHistoryEvent = (index: number, field: string, value: any) => {
-    const updatedLog = [...formData.historyLog];
-    updatedLog[index] = { ...updatedLog[index], [field]: value };
-    setFormData({ ...formData, historyLog: updatedLog });
-  };
-
-  // --- Dynamic Filtering ---
-  const filteredList = filterType === 'all' 
-    ? equipmentList 
-    : equipmentList.filter(item => item.type === filterType);
-  
-  const getStatusBadge = (status: string) => {
-    const styles = { active: 'bg-green-100 text-green-800', storage: 'bg-orange-100 text-orange-800', maintenance: 'bg-red-100 text-red-800', retired: 'bg-gray-100 text-gray-800' };
-    return <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[status as keyof typeof styles] || styles.retired}`}>{status}</span>;
-  };
-
-  if (systemLoading) return <div>Loading system config...</div>;
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">טוען ציוד...</div>;
+  }
 
   return (
-    <div>
-      <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
-
+    <div className="space-y-6">
       {/* Header */}
-      <div className="md:flex md:items-center md:justify-between mb-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">ניהול תיק מכשור</h2>
-          <p className="text-sm text-gray-500">ניהול מלאי, היסטוריית טיפולים ועלויות (TCO).</p>
+          <h1 className="text-2xl font-bold text-gray-900">ניהול תיק מכשור</h1>
+          <p className="text-gray-500 text-sm">(TCO) ניהול מלאי, היסטוריית טיפולים ועלויות.</p>
         </div>
-        <button onClick={() => openModal()} className="mt-4 md:mt-0 ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-          <PlusIcon className="-ml-1 mr-2 h-5 w-5" /> הקמת מכשיר
-        </button>
-      </div>
-
-      {/* DYNAMIC Filter Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          <button 
-             onClick={() => setFilterType('all')} 
-             className={`pb-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-               filterType === 'all' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-             }`}
+        {canAddEquipment && (
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
           >
-            <FunnelIcon className="h-5 w-5 ml-2" /> הכל
+            <PlusIcon className="h-5 w-5" />
+            הקמת מכשיר
           </button>
-
-          {modules
-            .filter(mod => isModuleActive(mod.id))
-            .map(mod => {
-              const Icon = getModuleIcon(mod.iconKey);
-              return (
-                <button 
-                  key={mod.id}
-                  onClick={() => setFilterType(mod.id)} 
-                  className={`pb-4 px-1 border-b-2 font-medium text-sm flex items-center ${
-                    filterType === mod.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <Icon className="h-5 w-5 ml-2" />
-                  {mod.label}
-                </button>
-              );
-            })}
-        </nav>
+        )}
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+      {/* Filters */}
+      <div className="flex gap-2 border-b border-gray-200 pb-4 overflow-x-auto">
+        {filterOptions.slice(0, 6).map(opt => {
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => setActiveFilter(opt.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${
+                activeFilter === opt.id
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Equipment Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -337,178 +293,231 @@ export default function ClientEquipment() {
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום וסטטוס</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">TCO</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות אחרונות</th>
-              <th className="relative px-6 py-3"><span className="sr-only">ערוך</span></th>
+              {canEditEquipment && (
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
+              )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredList.map((item) => {
-              const mod = modules.find(m => m.id === item.type);
-              const TypeIcon = mod ? getModuleIcon(mod.iconKey) : CubeIcon;
-              
+          <tbody className="divide-y divide-gray-200">
+            {filteredEquipment.map((item) => {
+              const Icon = typeIcons[item.type] || WrenchScrewdriverIcon;
               return (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <TypeIcon className="h-6 w-6 text-gray-600"/>
-                      </div>
-                      <div className="mr-4">
-                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                        <div className="text-xs text-gray-500">{item.model}</div>
+                      <Icon className="h-5 w-5 text-gray-400 ml-3" />
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900">{item.name}</span>
+                          {item.isCritical && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                              <ExclamationTriangleIcon className="h-3 w-3" />
+                              קריטי
+                            </span>
+                          )}
+                          {getApprovalBadge(item.approvalStatus)}
+                        </div>
+                        <span className="text-sm text-gray-500">{item.serialNumber}</span>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 flex items-center"><MapPinIcon className="h-3 w-3 ml-1 text-gray-400"/> {item.location || '-'}</div>
-                    <div className="mt-1">{getStatusBadge(item.status)}</div>
+                    <div className="text-sm text-gray-500">{item.location || '-'}</div>
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      item.status === 'active' ? 'bg-green-100 text-green-800' :
+                      item.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.status === 'active' ? 'פעיל' : item.status === 'maintenance' ? 'בתחזוקה' : 'לא פעיל'}
+                    </span>
                   </td>
-                  <td className="px-6 py-4 font-bold text-gray-900">₪{calculateTCO(item).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    ₪{item.tco?.toLocaleString() || 0}
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
-                     {item.historyLog && item.historyLog.length > 0 ? (
-                       <div className="flex flex-col space-y-1">
-                         <span className="text-xs bg-gray-100 px-2 py-0.5 rounded w-fit">{item.historyLog[0].date} - {item.historyLog[0].type}</span>
-                       </div>
-                     ) : '-'}
+                    {item.historyLog?.[0] 
+                      ? `${item.historyLog[0].date} - ${item.historyLog[0].type}`
+                      : '-'}
                   </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
-                    <button onClick={(e) => { e.stopPropagation(); openModal(item); }} className="text-indigo-600 hover:text-indigo-900"><PencilSquareIcon className="h-5 w-5" /></button>
-                  </td>
+                  {canEditEquipment && (
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => openModal(item)}
+                        className="text-indigo-600 hover:text-indigo-800"
+                      >
+                        <PencilSquareIcon className="h-5 w-5" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               );
             })}
           </tbody>
         </table>
+        {filteredEquipment.length === 0 && (
+          <div className="text-center py-8 text-gray-500">אין ציוד להצגה</div>
+        )}
       </div>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setIsModalOpen(false)}></div>
-            <div className="inline-block align-bottom bg-white rounded-lg text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              
-              <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                <h3 className="text-lg font-bold text-gray-900">{editingId ? 'תיק מכשיר ועלויות' : 'הקמת נכס חדש'}</h3>
-                <button onClick={() => setIsModalOpen(false)}><XMarkIcon className="h-6 w-6 text-gray-400" /></button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+            <h2 className="text-xl font-bold mb-4 text-gray-900">
+              {editingItem ? 'עריכת מכשיר' : 'הקמת מכשיר חדש'}
+            </h2>
+            
+            {/* Critical Equipment Warning */}
+            {showCriticalWarning && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <ExclamationTriangleIcon className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="font-bold text-amber-800">ציוד קריטי - דורש אישור</h3>
+                    <p className="text-sm text-amber-700 mt-1">
+                      ציוד מסוג "{EQUIPMENT_TYPES[formData.type as keyof typeof EQUIPMENT_TYPES]?.label || formData.type}" 
+                      מוגדר כציוד קריטי ודורש אישור היועץ לפני הפעלה.
+                    </p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      לאחר השליחה, הציוד יופיע בסטטוס "ממתין לאישור" והיועץ יקבל התראה.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">שם המכשיר *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                />
               </div>
 
-              <div className="border-b border-gray-200 bg-white">
-                <nav className="-mb-px flex">
-                  {[
-                    {id: 'identity', label: 'זהות ומיקום', icon: DocumentTextIcon},
-                    {id: 'procurement', label: 'רכש והסכמים', icon: BanknotesIcon},
-                    {id: 'history', label: 'היסטוריה (Timeline)', icon: ClockIcon}
-                  ].map((tab: any) => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} 
-                      className={`w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm flex items-center justify-center ${activeTab === tab.id ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500'}`}>
-                      <tab.icon className="h-5 w-5 ml-2" /> {tab.label}
-                    </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">סוג ציוד *</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  className={`mt-1 block w-full border p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                    isSelectedTypeCritical && isClient ? 'border-amber-400' : 'border-gray-300'
+                  }`}
+                >
+                  {Object.values(EQUIPMENT_TYPES).map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.label} {t.isCriticalByDefault && isClient ? '⚠️' : ''}
+                    </option>
                   ))}
-                </nav>
+                </select>
+                {isClient && (
+                  <p className="text-xs text-gray-500 mt-1">⚠️ = ציוד קריטי הדורש אישור יועץ</p>
+                )}
               </div>
 
-              <form onSubmit={handleSubmit} className="h-[500px] overflow-y-auto bg-gray-50">
-                <div className="p-6">
-                  {/* Tab 1: Identity */}
-                  {activeTab === 'identity' && (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">שם הציוד *</label><input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        
-                        {/* DYNAMIC SELECT */}
-                        <div><label className="block text-sm font-medium text-gray-700">סוג</label>
-                          <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900">
-                            {modules
-                              .filter(mod => isModuleActive(mod.id))
-                              .map(mod => (
-                                <option key={mod.id} value={mod.id}>{mod.label}</option>
-                              ))
-                            }
-                          </select>
-                        </div>
-
-                        <div><label className="block text-sm font-medium text-gray-700">סטטוס</label>
-                          <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900">
-                            <option value="active">פעיל</option><option value="maintenance">בתיקון</option><option value="storage">באחסון</option>
-                          </select>
-                        </div>
-                        <div><label className="block text-sm font-medium text-gray-700">מיקום</label><input value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">יצרן / דגם</label><input value={formData.model} onChange={e => setFormData({...formData, model: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">מספר סידורי</label><input value={formData.serialNumber} onChange={e => setFormData({...formData, serialNumber: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">בדיקה הבאה</label><input type="date" required value={formData.nextInspectionDate} onChange={e => setFormData({...formData, nextInspectionDate: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Tab 2: Procurement */}
-                  {activeTab === 'procurement' && (
-                    <div className="space-y-6">
-                       <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">תאריך רכישה</label><input type="date" value={formData.purchaseDate} onChange={e => setFormData({...formData, purchaseDate: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">מחיר (₪)</label><input type="number" value={formData.purchasePrice} onChange={e => setFormData({...formData, purchasePrice: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">ספק</label><input value={formData.vendor} onChange={e => setFormData({...formData, vendor: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">מספר הזמנה (PO)</label><input value={formData.orderNumber} onChange={e => setFormData({...formData, orderNumber: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                       </div>
-                       <hr className="my-2"/>
-                       <div className="grid grid-cols-2 gap-6">
-                        <div><label className="block text-sm font-medium text-gray-700">שם נותן שירות</label><input value={formData.serviceName} onChange={e => setFormData({...formData, serviceName: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                        <div><label className="block text-sm font-medium text-gray-700">תוקף חוזה שירות</label><input type="date" value={formData.contractExpires} onChange={e => setFormData({...formData, contractExpires: e.target.value})} className="mt-1 block w-full border p-2 rounded bg-white text-gray-900" /></div>
-                       </div>
-                    </div>
-                  )}
-
-                  {/* Tab 3: History */}
-                  {activeTab === 'history' && (
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-md font-bold text-gray-900">ציר זמן אירועים</h4>
-                        <button type="button" onClick={addHistoryEvent} className="text-sm bg-indigo-50 text-indigo-700 px-3 py-1 rounded border border-indigo-200">+ הוסף אירוע</button>
-                      </div>
-
-                      {formData.historyLog.map((event: AssetEvent, idx: number) => (
-                        <div key={idx} className="bg-white p-4 rounded border border-gray-200 flex flex-col gap-3 shadow-sm relative">
-                           <div className="absolute top-4 left-4 text-xs font-bold text-gray-400">#{idx + 1}</div>
-                           <div className="grid grid-cols-4 gap-4">
-                             <div><label className="text-xs text-gray-500">תאריך</label><input type="date" value={event.date} onChange={e => updateHistoryEvent(idx, 'date', e.target.value)} className="w-full text-sm border-b bg-white text-gray-900" /></div>
-                             <div><label className="text-xs text-gray-500">סוג</label>
-                               <select value={event.type} onChange={e => updateHistoryEvent(idx, 'type', e.target.value)} className="w-full text-sm border-b bg-white text-gray-900">
-                                 <option value="repair">תיקון</option><option value="maintenance">אחזקה</option><option value="calibration">כיול</option>
-                               </select>
-                             </div>
-                             <div><label className="text-xs text-gray-500">עלות</label><input type="number" value={event.cost} onChange={e => updateHistoryEvent(idx, 'cost', e.target.value)} className="w-full text-sm font-bold text-red-600 border-b bg-white" /></div>
-                             
-                             <div className="flex items-end">
-                               {event.documentUrl ? (
-                                 <a href={event.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline truncate max-w-[100px]" title={event.documentName}>
-                                   {event.documentName || 'צפה בקובץ'}
-                                 </a>
-                               ) : (
-                                 <button type="button" disabled={uploadingFile} onClick={() => triggerFileUpload(idx)} className="text-xs flex items-center text-gray-500 hover:text-indigo-600">
-                                   {uploadingFile && currentEventIndex === idx ? <ArrowPathIcon className="h-4 w-4 animate-spin"/> : <PaperClipIcon className="h-4 w-4 mr-1"/>}
-                                   צרף מסמך
-                                 </button>
-                               )}
-                             </div>
-                           </div>
-                           <input placeholder="תיאור העבודה..." value={event.description} onChange={e => updateHistoryEvent(idx, 'description', e.target.value)} className="w-full text-sm border p-1 rounded bg-white text-gray-900" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">יצרן</label>
+                  <input
+                    type="text"
+                    value={formData.manufacturer}
+                    onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
                 </div>
-                {/* Footer Buttons */}
-                <div className="bg-gray-100 px-4 py-3 border-t flex flex-row-reverse sticky bottom-0">
-                  <button type="submit" disabled={isSubmitting} className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 sm:ml-3 sm:w-auto sm:text-sm">
-                    {isSubmitting ? 'שומר...' : 'שמור נתונים'}
-                  </button>
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:w-auto sm:text-sm">
-                    סגור
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">דגם</label>
+                  <input
+                    type="text"
+                    value={formData.model}
+                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
                 </div>
-              </form>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">מספר סריאלי</label>
+                <input
+                  type="text"
+                  value={formData.serialNumber}
+                  onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">מיקום</label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">תאריך בדיקה הבא</label>
+                <input
+                  type="date"
+                  value={formData.nextInspectionDate}
+                  onChange={(e) => setFormData({ ...formData, nextInspectionDate: e.target.value })}
+                  className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">TCO (₪)</label>
+                <input
+                  type="number"
+                  value={formData.tco}
+                  onChange={(e) => setFormData({ ...formData, tco: Number(e.target.value) })}
+                  className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Checkbox ציוד קריטי - רק ליועץ */}
+              {isConsultant && (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="isCritical"
+                    checked={formData.isCritical || isSelectedTypeCritical}
+                    onChange={(e) => setFormData({ ...formData, isCritical: e.target.checked })}
+                    className="h-4 w-4 text-indigo-600 rounded"
+                  />
+                  <label htmlFor="isCritical" className="text-sm font-medium text-gray-700">
+                    סמן כציוד קריטי (דורש אישור יועץ להוספה ע"י לקוח)
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleSave}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  showCriticalWarning 
+                    ? 'bg-amber-600 hover:bg-amber-700' 
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                }`}
+              >
+                {editingItem 
+                  ? 'עדכון' 
+                  : showCriticalWarning 
+                    ? 'שלח לאישור יועץ' 
+                    : 'הקמה'
+                }
+              </button>
             </div>
           </div>
         </div>

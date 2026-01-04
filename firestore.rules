@@ -256,7 +256,7 @@ service cloud.firestore {
           isClientUser(clientId)
         );
         // Tenant safety officers can create/update/delete
-        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
+        allow create: if isAuthenticated() && ((clientBelongsToUserTenant(clientId) && isSafetyOfficer()) || isClientUser(clientId));
         allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
         allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
       }
