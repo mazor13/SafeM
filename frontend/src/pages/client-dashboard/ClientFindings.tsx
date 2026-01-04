@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, doc, updateDoc, Timestamp } from '
 import { firestore as db, auth } from '../../firebase';
 import { useRole } from '../../providers/RoleProvider';
 import { Finding, FindingSeverity, FindingStatus } from '../../types/finding';
+import { uploadMultipleFindingImages } from '../../services/storageService';
 import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
@@ -46,6 +47,7 @@ export default function ClientFindings() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
 
   useEffect(() => {
     const fetchFindings = async () => {
@@ -101,6 +103,7 @@ export default function ClientFindings() {
     setTreatmentDescription(finding.treatment?.description || '');
     setSelectedImages([]);
     setImagePreviewUrls([]);
+    setUploadProgress('');
     setIsModalOpen(true);
   };
 
@@ -115,7 +118,7 @@ export default function ClientFindings() {
         alert('נא לבחור קובץ תמונה בלבד');
         return false;
       }
-      // Check file size (5MB max before compression)
+      // Check file size (10MB max before compression)
       if (file.size > 10 * 1024 * 1024) {
         alert('גודל הקובץ חייב להיות עד 10MB');
         return false;
@@ -148,12 +151,28 @@ export default function ClientFindings() {
     }
     
     setSaving(true);
+    setUploadProgress('');
     
     try {
       const currentUser = auth.currentUser;
+      let imageUrls: string[] = [];
       
-      // TODO: Upload images to Firebase Storage in TASK-020
-      // For now, we'll save without images
+      // Upload images if any
+      if (selectedImages.length > 0) {
+        setUploadProgress(`מעלה תמונות... 0/${selectedImages.length}`);
+        
+        const uploadResults = await uploadMultipleFindingImages(
+          clientId,
+          selectedFinding.id,
+          selectedImages,
+          (current, total) => {
+            setUploadProgress(`מעלה תמונות... ${current}/${total}`);
+          }
+        );
+        
+        imageUrls = uploadResults.map(r => r.url);
+        setUploadProgress('התמונות הועלו בהצלחה!');
+      }
       
       const updateData = {
         status: 'pending_approval' as FindingStatus,
@@ -162,7 +181,7 @@ export default function ClientFindings() {
           treatedBy: currentUser?.uid || 'unknown',
           treatedByName: currentUser?.email || 'לקוח',
           treatedDate: Timestamp.now(),
-          images: [], // Will be populated in TASK-020
+          images: imageUrls,
         },
         updatedAt: Timestamp.now(),
         history: [
@@ -198,6 +217,7 @@ export default function ClientFindings() {
       alert('שגיאה בשמירת הטיפול');
     } finally {
       setSaving(false);
+      setUploadProgress('');
     }
   };
 
@@ -396,6 +416,7 @@ export default function ClientFindings() {
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600"
+                disabled={saving}
               >
                 <XMarkIcon className="h-6 w-6" />
               </button>
@@ -428,6 +449,7 @@ export default function ClientFindings() {
                   rows={4}
                   className="w-full border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="תאר את הפעולות שבוצעו לתיקון הממצא..."
+                  disabled={saving}
                   required
                 />
               </div>
@@ -435,9 +457,11 @@ export default function ClientFindings() {
               {/* Image Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  תמונות הוכחה (אופציונלי)
+                  תמונות הוכחה (מומלץ)
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-indigo-400 transition-colors">
+                <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                  saving ? 'border-gray-200 bg-gray-50' : 'border-gray-300 hover:border-indigo-400'
+                }`}>
                   <input
                     type="file"
                     accept="image/*"
@@ -445,11 +469,12 @@ export default function ClientFindings() {
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload"
+                    disabled={saving}
                   />
-                  <label htmlFor="image-upload" className="cursor-pointer">
+                  <label htmlFor="image-upload" className={`${saving ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                     <CameraIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">לחץ להעלאת תמונות</p>
-                    <p className="text-xs text-gray-400 mt-1">JPG, PNG עד 10MB</p>
+                    <p className="text-xs text-gray-400 mt-1">JPG, PNG עד 10MB (יידחסו אוטומטית)</p>
                   </label>
                 </div>
                 
@@ -463,14 +488,24 @@ export default function ClientFindings() {
                           alt={`Preview ${index + 1}`}
                           className="h-20 w-20 object-cover rounded-lg border"
                         />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        >
-                          <XMarkIcon className="h-4 w-4" />
-                        </button>
+                        {!saving && (
+                          <button
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
+                  </div>
+                )}
+                
+                {/* Upload Progress */}
+                {uploadProgress && (
+                  <div className="mt-2 text-sm text-indigo-600 flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
+                    {uploadProgress}
                   </div>
                 )}
               </div>
@@ -487,7 +522,7 @@ export default function ClientFindings() {
             <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3">
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                 disabled={saving}
               >
                 ביטול
@@ -495,8 +530,11 @@ export default function ClientFindings() {
               <button
                 onClick={handleSubmitTreatment}
                 disabled={saving || !treatmentDescription.trim()}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
+                {saving && (
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                )}
                 {saving ? 'שומר...' : 'שלח לאישור יועץ'}
               </button>
             </div>
