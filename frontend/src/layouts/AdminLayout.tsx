@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { firestore as db } from '../firebase';
 import {
   Home,
   LayoutDashboard,
@@ -21,9 +23,11 @@ import {
   ChevronDown,
   Box,
   AlertTriangle,
+  Clock,
   PieChart,
   History,
-  CheckCircle
+  CheckCircle,
+  Bell
 } from 'lucide-react';
 
 interface NavItem {
@@ -31,12 +35,36 @@ interface NavItem {
   to: string;
   icon: any;
   end?: boolean;
+  badge?: number;
 }
 
 export default function AdminLayout() {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'reports']);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+
+  // Fetch pending approvals count
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const clientsSnapshot = await getDocs(collection(db, "clients"));
+        let count = 0;
+        for (const clientDoc of clientsSnapshot.docs) {
+          const findingsRef = collection(db, "clients", clientDoc.id, "findings");
+          const q = query(findingsRef, where("status", "==", "pending_approval"));
+          const findingsSnapshot = await getDocs(q);
+          count += findingsSnapshot.size;
+        }
+        setPendingCount(count);
+      } catch (err) {
+        console.error("Error fetching pending count:", err);
+      }
+    };
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, []);
 
   if (!loading && !user) {
     return <Navigate to="/login" replace />;
@@ -88,6 +116,7 @@ export default function AdminLayout() {
   const equipmentNavigation: NavItem[] = [
     { name: 'ציוד', to: '/admin/equipment', icon: Box },
     { name: 'ממצאים', to: '/admin/findings', icon: AlertTriangle },
+    { name: 'ממתין לאישור', to: '/admin/pending-approvals', icon: Clock, badge: pendingCount },
   ];
 
   // Phase 5 - Reports & Analytics
@@ -142,6 +171,11 @@ export default function AdminLayout() {
             >
               <item.icon className="ml-3 h-4 w-4" />
               {item.name}
+              {item.badge > 0 && (
+                <span className="mr-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {item.badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </div>
@@ -232,8 +266,25 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-[#0f172a] relative">
+        {/* Top Header Bar */}
+        <div className="sticky top-0 z-10 bg-[#1e293b] border-b border-slate-700/50 px-6 py-3 flex justify-between items-center">
+          <div>{/* Breadcrumb placeholder */}</div>
+          <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <button
+              onClick={() => navigate("/admin/pending-approvals")}
+              className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <Bell className="h-5 w-5" />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold h-5 w-5 flex items-center justify-center rounded-full">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
         <Outlet />
       </main>
     </div>

@@ -37,6 +37,7 @@ import TemplatePreview from './pages/admin/templates/TemplatePreview';
 import EquipmentPage from './pages/admin/equipment/EquipmentPage';
 import EquipmentFormPage from './pages/admin/equipment/EquipmentFormPage';
 import FindingsPage from './pages/admin/equipment/FindingsPage';
+import PendingApprovals from './pages/admin/PendingApprovals';
 
 // Phase 5 - Reports Pages
 import AnalyticsPage from './pages/admin/reports/AnalyticsPage';
@@ -121,6 +122,7 @@ function App() {
           <Route path="equipment/new" element={<EquipmentFormPage />} />
           <Route path="equipment/:id/edit" element={<EquipmentFormPage />} />
           <Route path="findings" element={<FindingsPage />} />
+          <Route path="pending-approvals" element={<PendingApprovals />} />
           
           {/* Phase 5 - Reports & Analytics */}
           <Route path="analytics" element={<AnalyticsPage />} />

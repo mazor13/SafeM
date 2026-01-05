@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { collection, getDocs, query, orderBy, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc, Timestamp, arrayUnion } from 'firebase/firestore';
 import { firestore as db, auth } from '../../firebase';
 import { useRole } from '../../providers/RoleProvider';
-import { Finding, FindingSeverity, FindingStatus } from '../../types/finding';
+import { Finding, FindingSeverity, FindingStatus, FindingComment } from '../../types/finding';
 import { uploadMultipleFindingImages } from '../../services/storageService';
 import {
   ExclamationTriangleIcon,
@@ -13,7 +13,10 @@ import {
   FunnelIcon,
   DocumentMagnifyingGlassIcon,
   CameraIcon,
-  XMarkIcon
+  XMarkIcon,
+  ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 const severityConfig: Record<FindingSeverity, { label: string; color: string; bgColor: string }> = {
@@ -33,21 +36,26 @@ const statusConfig: Record<FindingStatus, { label: string; color: string; bgColo
 
 export default function ClientFindings() {
   const { clientId } = useParams<{ clientId: string }>();
-  const { can } = useRole();
+  const { can, isClient, isConsultant } = useRole();
   
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
+  
+  // Treatment Modal
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // Treatment form state
   const [treatmentDescription, setTreatmentDescription] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>('');
+  
+  // Details Modal (view history + comments)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [addingComment, setAddingComment] = useState(false);
 
   useEffect(() => {
     const fetchFindings = async () => {
@@ -70,14 +78,12 @@ export default function ClientFindings() {
     fetchFindings();
   }, [clientId]);
 
-  // Filter findings
   const filteredFindings = findings.filter(f => {
     if (statusFilter !== 'all' && f.status !== statusFilter) return false;
     if (severityFilter !== 'all' && f.severity !== severityFilter) return false;
     return true;
   });
 
-  // Stats
   const stats = {
     total: findings.length,
     open: findings.filter(f => f.status === 'open').length,
@@ -92,12 +98,25 @@ export default function ClientFindings() {
     return date.toLocaleDateString('he-IL');
   };
 
+  const formatDateTime = (timestamp: any) => {
+    if (!timestamp) return '-';
+    const date = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
+    return date.toLocaleString('he-IL', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const isOverdue = (dueDate: any) => {
     if (!dueDate) return false;
     const due = dueDate.seconds ? new Date(dueDate.seconds * 1000) : new Date(dueDate);
     return due < new Date();
   };
 
+  // Treatment Modal Functions
   const openTreatmentModal = (finding: Finding) => {
     setSelectedFinding(finding);
     setTreatmentDescription(finding.treatment?.description || '');
@@ -113,12 +132,10 @@ export default function ClientFindings() {
     
     const newFiles = Array.from(files);
     const validFiles = newFiles.filter(file => {
-      // Check file type
       if (!file.type.startsWith('image/')) {
         alert('נא לבחור קובץ תמונה בלבד');
         return false;
       }
-      // Check file size (10MB max before compression)
       if (file.size > 10 * 1024 * 1024) {
         alert('גודל הקובץ חייב להיות עד 10MB');
         return false;
@@ -127,8 +144,6 @@ export default function ClientFindings() {
     });
     
     setSelectedImages(prev => [...prev, ...validFiles]);
-    
-    // Create preview URLs
     validFiles.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -157,19 +172,14 @@ export default function ClientFindings() {
       const currentUser = auth.currentUser;
       let imageUrls: string[] = [];
       
-      // Upload images if any
       if (selectedImages.length > 0) {
         setUploadProgress(`מעלה תמונות... 0/${selectedImages.length}`);
-        
         const uploadResults = await uploadMultipleFindingImages(
           clientId,
           selectedFinding.id,
           selectedImages,
-          (current, total) => {
-            setUploadProgress(`מעלה תמונות... ${current}/${total}`);
-          }
+          (current, total) => setUploadProgress(`מעלה תמונות... ${current}/${total}`)
         );
-        
         imageUrls = uploadResults.map(r => r.url);
         setUploadProgress('התמונות הועלו בהצלחה!');
       }
@@ -198,18 +208,14 @@ export default function ClientFindings() {
       
       await updateDoc(doc(db, 'clients', clientId, 'findings', selectedFinding.id), updateData);
       
-      // Update local state
       setFindings(prev => prev.map(f => 
-        f.id === selectedFinding.id 
-          ? { ...f, ...updateData } 
-          : f
+        f.id === selectedFinding.id ? { ...f, ...updateData } : f
       ));
       
       setIsModalOpen(false);
       setTreatmentDescription('');
       setSelectedImages([]);
       setImagePreviewUrls([]);
-      
       alert('הטיפול נשלח לאישור היועץ');
       
     } catch (err) {
@@ -218,6 +224,52 @@ export default function ClientFindings() {
     } finally {
       setSaving(false);
       setUploadProgress('');
+    }
+  };
+
+  // Details Modal Functions
+  const openDetailsModal = (finding: Finding) => {
+    setSelectedFinding(finding);
+    setNewComment('');
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleAddComment = async () => {
+    if (!clientId || !selectedFinding || !newComment.trim()) return;
+    
+    setAddingComment(true);
+    try {
+      const currentUser = auth.currentUser;
+      
+      const comment: FindingComment = {
+        id: `comment_${Date.now()}`,
+        text: newComment.trim(),
+        by: currentUser?.uid || 'unknown',
+        byName: currentUser?.email || 'משתמש',
+        byRole: isClient ? 'client' : 'consultant',
+        source: 'web',
+        createdAt: Timestamp.now(),
+      };
+      
+      await updateDoc(doc(db, 'clients', clientId, 'findings', selectedFinding.id), {
+        comments: arrayUnion(comment),
+        updatedAt: Timestamp.now(),
+      });
+      
+      // Update local state
+      setFindings(prev => prev.map(f => 
+        f.id === selectedFinding.id 
+          ? { ...f, comments: [...(f.comments || []), comment] }
+          : f
+      ));
+      setSelectedFinding(prev => prev ? { ...prev, comments: [...(prev.comments || []), comment] } : null);
+      setNewComment('');
+      
+    } catch (err) {
+      console.error('Error adding comment:', err);
+      alert('שגיאה בהוספת הערה');
+    } finally {
+      setAddingComment(false);
     }
   };
 
@@ -235,61 +287,33 @@ export default function ClientFindings() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <button
-          onClick={() => setStatusFilter('all')}
-          className={`p-4 rounded-lg border transition-all ${
-            statusFilter === 'all' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-          <div className="text-sm text-gray-500">סה"כ</div>
-        </button>
-        
-        <button
-          onClick={() => setStatusFilter('open')}
-          className={`p-4 rounded-lg border transition-all ${
-            statusFilter === 'open' ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-red-600">{stats.open}</div>
-          <div className="text-sm text-gray-500">פתוחים</div>
-        </button>
-        
-        <button
-          onClick={() => setStatusFilter('in_progress')}
-          className={`p-4 rounded-lg border transition-all ${
-            statusFilter === 'in_progress' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-          <div className="text-sm text-gray-500">בטיפול</div>
-        </button>
-        
-        <button
-          onClick={() => setStatusFilter('pending_approval')}
-          className={`p-4 rounded-lg border transition-all ${
-            statusFilter === 'pending_approval' ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-yellow-600">{stats.pendingApproval}</div>
-          <div className="text-sm text-gray-500">ממתין לאישור</div>
-        </button>
-        
-        <button
-          onClick={() => setStatusFilter('closed')}
-          className={`p-4 rounded-lg border transition-all ${
-            statusFilter === 'closed' ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white hover:border-gray-300'
-          }`}
-        >
-          <div className="text-2xl font-bold text-green-600">{stats.closed}</div>
-          <div className="text-sm text-gray-500">סגורים</div>
-        </button>
+        {[
+          { key: 'all', label: 'סה"כ', value: stats.total, color: 'gray' },
+          { key: 'open', label: 'פתוחים', value: stats.open, color: 'red' },
+          { key: 'in_progress', label: 'בטיפול', value: stats.inProgress, color: 'blue' },
+          { key: 'pending_approval', label: 'ממתין לאישור', value: stats.pendingApproval, color: 'yellow' },
+          { key: 'closed', label: 'סגורים', value: stats.closed, color: 'green' },
+        ].map(stat => (
+          <button
+            key={stat.key}
+            onClick={() => setStatusFilter(stat.key)}
+            className={`p-4 rounded-lg border transition-all ${
+              statusFilter === stat.key 
+                ? `border-${stat.color}-500 bg-${stat.color}-50` 
+                : 'border-gray-200 bg-white hover:border-gray-300'
+            }`}
+          >
+            <div className={`text-2xl font-bold ${stat.color === 'gray' ? 'text-gray-900' : `text-${stat.color}-600`}`}>
+              {stat.value}
+            </div>
+            <div className="text-sm text-gray-500">{stat.label}</div>
+          </button>
+        ))}
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-lg border">
         <FunnelIcon className="h-5 w-5 text-gray-400" />
-        
         <div>
           <label className="text-sm text-gray-500 ml-2">חומרה:</label>
           <select
@@ -304,12 +328,8 @@ export default function ClientFindings() {
             <option value="low">נמוך</option>
           </select>
         </div>
-        
         {statusFilter !== 'all' && (
-          <button
-            onClick={() => setStatusFilter('all')}
-            className="text-sm text-indigo-600 hover:text-indigo-800"
-          >
+          <button onClick={() => setStatusFilter('all')} className="text-sm text-indigo-600 hover:text-indigo-800">
             נקה סינון סטטוס
           </button>
         )}
@@ -325,9 +345,7 @@ export default function ClientFindings() {
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">סטטוס</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">תאריך יעד</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום</th>
-              {can('canUpdateFindingStatus') && (
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
-              )}
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -336,15 +354,26 @@ export default function ClientFindings() {
               const status = statusConfig[finding.status];
               const StatusIcon = status.icon;
               const overdue = isOverdue(finding.dueDate) && finding.status !== 'closed';
+              const hasComments = (finding.comments?.length || 0) > 0;
               
               return (
                 <tr key={finding.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{finding.title}</div>
-                    <div className="text-sm text-gray-500 truncate max-w-xs">{finding.description}</div>
-                    {finding.equipmentName && (
-                      <div className="text-xs text-indigo-600 mt-1">🔧 {finding.equipmentName}</div>
-                    )}
+                    <button 
+                      onClick={() => openDetailsModal(finding)}
+                      className="text-right hover:text-indigo-600"
+                    >
+                      <div className="font-medium text-gray-900 flex items-center gap-2">
+                        {finding.title}
+                        {hasComments && (
+                          <ChatBubbleLeftRightIcon className="h-4 w-4 text-indigo-500" />
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate max-w-xs">{finding.description}</div>
+                      {finding.equipmentName && (
+                        <div className="text-xs text-indigo-600 mt-1">🔧 {finding.equipmentName}</div>
+                      )}
+                    </button>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${severity.bgColor} ${severity.color}`}>
@@ -363,35 +392,31 @@ export default function ClientFindings() {
                       {overdue && <span className="block text-xs">באיחור!</span>}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {finding.location || '-'}
+                  <td className="px-6 py-4 text-sm text-gray-500">{finding.location || '-'}</td>
+                  <td className="px-6 py-4">
+                    {can('canUpdateFindingStatus') && (finding.status === 'open' || finding.status === 'rejected') && (
+                      <button
+                        onClick={() => openTreatmentModal(finding)}
+                        className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700"
+                      >
+                        עדכן כטופל
+                      </button>
+                    )}
+                    {can('canUpdateFindingStatus') && finding.status === 'in_progress' && (
+                      <button
+                        onClick={() => openTreatmentModal(finding)}
+                        className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
+                      >
+                        סיים טיפול
+                      </button>
+                    )}
+                    {finding.status === 'pending_approval' && (
+                      <span className="text-sm text-yellow-600">ממתין לאישור יועץ</span>
+                    )}
+                    {finding.status === 'closed' && (
+                      <span className="text-sm text-green-600">✓ טופל</span>
+                    )}
                   </td>
-                  {can('canUpdateFindingStatus') && (
-                    <td className="px-6 py-4">
-                      {(finding.status === 'open' || finding.status === 'rejected') && (
-                        <button
-                          onClick={() => openTreatmentModal(finding)}
-                          className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700"
-                        >
-                          עדכן כטופל
-                        </button>
-                      )}
-                      {finding.status === 'in_progress' && (
-                        <button
-                          onClick={() => openTreatmentModal(finding)}
-                          className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700"
-                        >
-                          סיים טיפול
-                        </button>
-                      )}
-                      {finding.status === 'pending_approval' && (
-                        <span className="text-sm text-yellow-600">ממתין לאישור יועץ</span>
-                      )}
-                      {finding.status === 'closed' && (
-                        <span className="text-sm text-green-600">✓ טופל</span>
-                      )}
-                    </td>
-                  )}
                 </tr>
               );
             })}
@@ -410,89 +435,47 @@ export default function ClientFindings() {
       {isModalOpen && selectedFinding && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
-            {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-900">עדכון טיפול</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-                disabled={saving}
-              >
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600" disabled={saving}>
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
             
-            {/* Modal Body */}
             <div className="p-6 space-y-4">
-              {/* Finding Info */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="font-bold text-gray-900">{selectedFinding.title}</h3>
                 <p className="text-sm text-gray-600 mt-1">{selectedFinding.description}</p>
-                <div className="flex gap-2 mt-2">
-                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${severityConfig[selectedFinding.severity].bgColor} ${severityConfig[selectedFinding.severity].color}`}>
-                    {severityConfig[selectedFinding.severity].label}
-                  </span>
-                  {selectedFinding.location && (
-                    <span className="text-xs text-gray-500">📍 {selectedFinding.location}</span>
-                  )}
-                </div>
               </div>
               
-              {/* Treatment Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  תיאור הטיפול שבוצע *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">תיאור הטיפול שבוצע *</label>
                 <textarea
                   value={treatmentDescription}
                   onChange={(e) => setTreatmentDescription(e.target.value)}
                   rows={4}
-                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="תאר את הפעולות שבוצעו לתיקון הממצא..."
+                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-900"
+                  placeholder="תאר את הפעולות שבוצעו..."
                   disabled={saving}
-                  required
                 />
               </div>
               
-              {/* Image Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  תמונות הוכחה (מומלץ)
-                </label>
-                <div className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-                  saving ? 'border-gray-200 bg-gray-50' : 'border-gray-300 hover:border-indigo-400'
-                }`}>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageSelect}
-                    className="hidden"
-                    id="image-upload"
-                    disabled={saving}
-                  />
-                  <label htmlFor="image-upload" className={`${saving ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">תמונות הוכחה</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  <input type="file" accept="image/*" multiple onChange={handleImageSelect} className="hidden" id="image-upload" disabled={saving} />
+                  <label htmlFor="image-upload" className="cursor-pointer">
                     <CameraIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
                     <p className="text-sm text-gray-600">לחץ להעלאת תמונות</p>
-                    <p className="text-xs text-gray-400 mt-1">JPG, PNG עד 10MB (יידחסו אוטומטית)</p>
                   </label>
                 </div>
-                
-                {/* Image Previews */}
                 {imagePreviewUrls.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
                     {imagePreviewUrls.map((url, index) => (
                       <div key={index} className="relative">
-                        <img
-                          src={url}
-                          alt={`Preview ${index + 1}`}
-                          className="h-20 w-20 object-cover rounded-lg border"
-                        />
+                        <img src={url} alt="" className="h-20 w-20 object-cover rounded-lg border" />
                         {!saving && (
-                          <button
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
+                          <button onClick={() => removeImage(index)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1">
                             <XMarkIcon className="h-4 w-4" />
                           </button>
                         )}
@@ -500,43 +483,132 @@ export default function ClientFindings() {
                     ))}
                   </div>
                 )}
-                
-                {/* Upload Progress */}
-                {uploadProgress && (
-                  <div className="mt-2 text-sm text-indigo-600 flex items-center gap-2">
-                    <div className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full"></div>
-                    {uploadProgress}
-                  </div>
-                )}
-              </div>
-              
-              {/* Info Note */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
-                  💡 לאחר השליחה, הממצא יעבור לסטטוס "ממתין לאישור" והיועץ יקבל התראה לבדיקה.
-                </p>
+                {uploadProgress && <div className="mt-2 text-sm text-indigo-600">{uploadProgress}</div>}
               </div>
             </div>
             
-            {/* Modal Footer */}
             <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                disabled={saving}
-              >
-                ביטול
-              </button>
-              <button
-                onClick={handleSubmitTreatment}
-                disabled={saving || !treatmentDescription.trim()}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {saving && (
-                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                )}
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded-lg" disabled={saving}>ביטול</button>
+              <button onClick={handleSubmitTreatment} disabled={saving || !treatmentDescription.trim()} className="px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">
                 {saving ? 'שומר...' : 'שלח לאישור יועץ'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details Modal */}
+      {isDetailsModalOpen && selectedFinding && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900">פרטי ממצא</h2>
+              <button onClick={() => setIsDetailsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Finding Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg">{selectedFinding.title}</h3>
+                    <p className="text-gray-600 mt-1">{selectedFinding.description}</p>
+                  </div>
+                  <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${statusConfig[selectedFinding.status].bgColor} ${statusConfig[selectedFinding.status].color}`}>
+                    {statusConfig[selectedFinding.status].label}
+                  </span>
+                </div>
+                <div className="flex gap-4 mt-3 text-sm text-gray-500">
+                  <span>📍 {selectedFinding.location || '-'}</span>
+                  <span>📅 יעד: {formatDate(selectedFinding.dueDate)}</span>
+                </div>
+              </div>
+              
+              {/* Rejection Reason */}
+              {selectedFinding.status === 'rejected' && selectedFinding.approval?.rejectionReason && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="font-bold text-red-800 flex items-center gap-2">
+                    <XCircleIcon className="h-5 w-5" />
+                    סיבת הדחייה:
+                  </h4>
+                  <p className="text-red-700 mt-1">{selectedFinding.approval.rejectionReason}</p>
+                  <p className="text-sm text-red-600 mt-2">
+                    👤 {selectedFinding.approval.byName} • {formatDateTime(selectedFinding.approval.date)}
+                  </p>
+                </div>
+              )}
+              
+              {/* Treatment Info */}
+              {selectedFinding.treatment && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-bold text-blue-800">טיפול שבוצע:</h4>
+                  <p className="text-blue-700 mt-1">{selectedFinding.treatment.description}</p>
+                  <p className="text-sm text-blue-600 mt-2">
+                    👤 {selectedFinding.treatment.treatedByName} • {formatDateTime(selectedFinding.treatment.treatedDate)}
+                  </p>
+                  {selectedFinding.treatment.images && selectedFinding.treatment.images.length > 0 && (
+                    <div className="flex gap-2 mt-3">
+                      {selectedFinding.treatment.images.map((url, i) => (
+                        <img key={i} src={url} alt="" className="h-20 w-20 object-cover rounded-lg border cursor-pointer" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Comments */}
+              <div>
+                <h4 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
+                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                  הערות ושיח ({selectedFinding.comments?.length || 0})
+                </h4>
+                
+                <div className="space-y-3 max-h-60 overflow-y-auto">
+                  {(!selectedFinding.comments || selectedFinding.comments.length === 0) ? (
+                    <p className="text-gray-500 text-sm text-center py-4">אין הערות עדיין</p>
+                  ) : (
+                    selectedFinding.comments.map((comment) => (
+                      <div key={comment.id} className={`p-3 rounded-lg ${comment.byRole === 'consultant' ? 'bg-purple-50 border-r-4 border-purple-400' : 'bg-gray-50 border-r-4 border-gray-400'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <UserCircleIcon className="h-5 w-5 text-gray-400" />
+                          <span className="font-medium text-gray-900">{comment.byName}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${comment.byRole === 'consultant' ? 'bg-purple-200 text-purple-800' : 'bg-gray-200 text-gray-800'}`}>
+                            {comment.byRole === 'consultant' ? 'יועץ' : 'לקוח'}
+                          </span>
+                          <span className="text-xs text-gray-400">{formatDateTime(comment.createdAt)}</span>
+                        </div>
+                        <p className="text-gray-700">{comment.text}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Add Comment */}
+                <div className="mt-4 flex gap-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="הוסף הערה..."
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                    disabled={addingComment}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={addingComment || !newComment.trim()}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    <PaperAirplaneIcon className="h-5 w-5 rotate-180" />
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end">
+              <button onClick={() => setIsDetailsModalOpen(false)} className="px-4 py-2 border rounded-lg">סגור</button>
             </div>
           </div>
         </div>

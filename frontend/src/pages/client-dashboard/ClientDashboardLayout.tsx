@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { ClientProvider, useClient } from '../../providers/ClientProvider';
 import { SystemProvider } from '../../providers/SystemProvider';
 import { ThemeProvider, useTheme } from '../../providers/ThemeProvider';
 import { RoleProvider, useRole } from '../../providers/RoleProvider';
 import { useAuth } from '../../providers/AuthProvider';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { firestore as db } from '../../firebase';
 import { 
   HomeIcon, 
   BuildingOfficeIcon, 
@@ -17,7 +19,8 @@ import {
   SunIcon,
   MoonIcon,
   ComputerDesktopIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 
 const ThemeSwitcher = () => {
@@ -55,6 +58,26 @@ const DashboardContent = () => {
   const { resolvedTheme } = useTheme();
   const { isConsultant, isClient, role } = useRole();
   const navigate = useNavigate();
+  
+  const [alertCount, setAlertCount] = useState<number>(0);
+
+  // Fetch findings that need attention (rejected or open)
+  useEffect(() => {
+    const fetchAlertCount = async () => {
+      if (!client?.id) return;
+      try {
+        const findingsRef = collection(db, 'clients', client.id, 'findings');
+        const q = query(findingsRef, where('status', 'in', ['rejected', 'open']));
+        const snapshot = await getDocs(q);
+        setAlertCount(snapshot.size);
+      } catch (err) {
+        console.error('Error fetching alert count:', err);
+      }
+    };
+    fetchAlertCount();
+    const interval = setInterval(fetchAlertCount, 60000);
+    return () => clearInterval(interval);
+  }, [client?.id]);
 
   const handleLogout = async () => {
     await logout();
@@ -165,8 +188,32 @@ const DashboardContent = () => {
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-y-auto p-4 md:p-8 ${resolvedTheme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
-        <Outlet />
+      <main className={`flex-1 overflow-y-auto ${resolvedTheme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+        {/* Top Header Bar with Bell */}
+        <div className={`sticky top-0 z-10 px-6 py-3 flex justify-end items-center border-b ${
+          resolvedTheme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+        }`}>
+          <button
+            onClick={() => navigate('findings')}
+            className={`relative p-2 rounded-lg transition-colors ${
+              resolvedTheme === 'dark' 
+                ? 'text-slate-400 hover:text-white hover:bg-slate-700' 
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+            title="ממצאים לטיפול"
+          >
+            <BellIcon className="h-5 w-5" />
+            {alertCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold h-5 w-5 flex items-center justify-center rounded-full">
+                {alertCount}
+              </span>
+            )}
+          </button>
+        </div>
+        
+        <div className="p-4 md:p-8">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

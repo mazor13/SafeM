@@ -240,6 +240,7 @@ service cloud.firestore {
     match /clients/{clientId} {
       // Tenant users can read their clients, client users can read their own
       allow read: if isAuthenticated() && (
+        isAdmin() ||
         clientBelongsToUserTenant(clientId) ||
         isClientUser(clientId)
       );
@@ -275,11 +276,13 @@ service cloud.firestore {
       // Findings sub-collection
       match /findings/{findingId} {
         allow read: if isAuthenticated() && (
+          isAdmin() ||
           clientBelongsToUserTenant(clientId) ||
           isClientUser(clientId)
         );
         allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
         allow update: if isAuthenticated() && (
+          isAdmin() ||
           clientBelongsToUserTenant(clientId) ||
           isClientUser(clientId)  // Client can update finding status
         );

@@ -3,6 +3,17 @@ import { Timestamp } from 'firebase/firestore';
 export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low';
 export type FindingStatus = 'open' | 'in_progress' | 'pending_approval' | 'closed' | 'rejected';
 
+export interface FindingComment {
+  id: string;
+  text: string;
+  by: string;
+  byName: string;
+  byRole: 'consultant' | 'client';
+  source: 'web' | 'app' | 'external';
+  createdAt: Timestamp;
+  attachments?: string[];
+}
+
 export interface Finding {
   id: string;
   
@@ -34,7 +45,7 @@ export interface Finding {
     treatedBy: string;
     treatedByName?: string;
     treatedDate: Timestamp;
-    images?: string[]; // URLs from Firebase Storage
+    images?: string[];
   };
   
   // אישור יועץ
@@ -46,6 +57,9 @@ export interface Finding {
     rejectionReason?: string;
   };
   
+  // הערות ושיח
+  comments?: FindingComment[];
+  
   // היסטוריה
   history?: FindingHistoryEntry[];
   
@@ -55,7 +69,7 @@ export interface Finding {
 }
 
 export interface FindingHistoryEntry {
-  action: 'created' | 'updated' | 'treated' | 'approved' | 'rejected' | 'reopened';
+  action: 'created' | 'updated' | 'treated' | 'approved' | 'rejected' | 'reopened' | 'commented';
   by: string;
   byName?: string;
   date: Timestamp;
