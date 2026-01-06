@@ -6,307 +6,266 @@ service cloud.firestore {
     // Helper Functions
     // ============================================
     
-    // Check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Get user document
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    // Check if user belongs to tenant
     function belongsToTenant(tenantId) {
       return isAuthenticated() && getUserData().tenantId == tenantId;
     }
     
-    // Check if user has role
     function hasRole(role) {
       return isAuthenticated() && getUserData().role == role;
     }
     
-    // Check if user has any of the roles
     function hasAnyRole(roles) {
       return isAuthenticated() && getUserData().role in roles;
     }
     
-    // Check if resource belongs to user's tenant
     function resourceBelongsToUserTenant() {
       return resource.data.tenantId == getUserData().tenantId;
     }
     
-    // Check if new resource will belong to user's tenant
     function newResourceBelongsToUserTenant() {
       return request.resource.data.tenantId == getUserData().tenantId;
     }
     
-    // Admin check
+    // Admin check - EXPANDED to include more roles
     function isAdmin() {
-      return hasAnyRole(['admin', 'super_admin', 'system_admin']);
+      return hasAnyRole(['admin', 'super_admin', 'system_admin', 'consultant']);
     }
     
-    // Safety officer check
     function isSafetyOfficer() {
-      return hasAnyRole(['admin', 'super_admin', 'safety_officer', 'inspector']);
+      return hasAnyRole(['admin', 'super_admin', 'safety_officer', 'inspector', 'consultant']);
     }
     
+    function isClientUser(clientId) {
+      return isAuthenticated() && getUserData().clientId == clientId;
+    }
+
     // ============================================
-    // Existing Collections
-    // ============================================
-    
     // Users
+    // ============================================
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
     
-    // Tenants
+    // ============================================
+    // Tenants (legacy - keep for backwards compatibility)
+    // ============================================
     match /tenants/{tenantId} {
-      allow read: if belongsToTenant(tenantId) || isAdmin();
+      allow read: if isAuthenticated();
       allow create: if isAdmin();
-      allow update: if belongsToTenant(tenantId) && isAdmin();
+      allow update: if isAdmin();
       allow delete: if hasRole('super_admin');
     }
     
+    // ============================================
+    // Clients (main collection)
+    // ============================================
+    match /clients/{clientId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin();
+      allow update: if isAuthenticated() && (isAdmin() || isClientUser(clientId));
+      allow delete: if isAdmin();
+      
+      // Equipment sub-collection
+      match /equipment/{equipmentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAdmin();
+      }
+      
+      // Inspections sub-collection
+      match /inspections/{inspectionId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAdmin();
+      }
+      
+      // Findings sub-collection
+      match /findings/{findingId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAdmin();
+      }
+      
+      // Documents sub-collection
+      match /documents/{documentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAdmin();
+      }
+      
+      // Facilities sub-collection
+      match /facilities/{facilityId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+        allow delete: if isAdmin();
+      }
+    }
+    
+    // ============================================
     // Templates
+    // ============================================
     match /templates/{templateId} {
-      allow read: if isAuthenticated() && (
-        resource.data.tenantId == 'system' || 
-        resourceBelongsToUserTenant()
-      );
-      allow create: if isAuthenticated() && (
-        newResourceBelongsToUserTenant() || 
-        (request.resource.data.tenantId == 'system' && isAdmin())
-      );
-      allow update, delete: if isAuthenticated() && (
-        resourceBelongsToUserTenant() || 
-        (resource.data.tenantId == 'system' && isAdmin())
-      );
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
     
-    // Filled Forms
-    match /filled_forms/{formId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    // System Templates
+    match /system_templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
     
-    // Documents
+    // Inspection Templates
+    match /inspection_templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Documents (global)
+    // ============================================
     match /documents/{documentId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
     
-    // Audit Log
-    match /audit_log/{logId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      // Audit logs are immutable
+    // Safety Files
+    match /safety_files/{fileId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // CRM
+    // ============================================
+    match /leads/{leadId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    match /contacts/{contactId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Audit & Logs
+    // ============================================
+    match /audit_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
       allow update, delete: if false;
     }
     
-    // Leads (CRM)
-    match /leads/{leadId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
+    match /audit_log/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
     }
     
-    // ============================================
-    // Phase 4 Collections - Equipment Management
-    // ============================================
-    
-    // Equipment
-    match /equipment/{equipmentId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // Locations
-    match /locations/{locationId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // Inspections
-    match /inspections/{inspectionId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // Findings
-    match /findings/{findingId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // ============================================
-    // Phase 5 Collections - Reports & Analytics
-    // ============================================
-    
-    // Reports (generated reports)
-    match /reports/{reportId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // Compliance Records
-    match /compliance/{complianceId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // Analytics Snapshots (periodic data captures)
-    match /analytics_snapshots/{snapshotId} {
-      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      // Snapshots are immutable
+    match /auditLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
       allow update, delete: if false;
     }
     
     // ============================================
     // System Collections
     // ============================================
-    
-    // System Config (global settings)
     match /system_config/{configId} {
       allow read: if isAuthenticated();
-      allow write: if hasRole('super_admin');
+      allow write: if isAdmin();
     }
     
-    // Categories
-    match /categories/{categoryId} {
+    match /system_modules/{moduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /subscriptions/{subId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /business_rules/{ruleId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
     }
     
     // ============================================
-    // Client Portal Collections
+    // Forms
     // ============================================
-    
-    // Client Portal Access
-    match /client_portal_access/{accessId} {
-      allow read: if isAuthenticated() && (
-        resourceBelongsToUserTenant() ||
-        resource.data.clientUserId == request.auth.uid
-      );
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isAdmin();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    
-    // Shared Documents (with clients)
-    match /shared_documents/{docId} {
-      allow read: if isAuthenticated() && (
-        resourceBelongsToUserTenant() ||
-        request.auth.uid in resource.data.sharedWith
-      );
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-    }
-    // ============================================
-    // Clients Collection (Tenant's Customers)
-    // ============================================
-    
-    // Helper: Check if user is a client user for this specific client
-    function isClientUser(clientId) {
-      return isAuthenticated() && getUserData().clientId == clientId;
-    }
-    
-    // Helper: Check if client belongs to user's tenant
-    function clientBelongsToUserTenant(clientId) {
-      return get(/databases/$(database)/documents/clients/$(clientId)).data.tenantId == getUserData().tenantId;
-    }
-    
-    // Clients
-    match /clients/{clientId} {
-      // Tenant users can read their clients, client users can read their own
-      allow read: if isAuthenticated() && (
-        isAdmin() ||
-        clientBelongsToUserTenant(clientId) ||
-        isClientUser(clientId)
-      );
-      // Only tenant admins can create/update clients
-      allow create: if isAuthenticated() && newResourceBelongsToUserTenant() && isSafetyOfficer();
-      allow update: if isAuthenticated() && resourceBelongsToUserTenant() && isSafetyOfficer();
-      allow delete: if isAuthenticated() && resourceBelongsToUserTenant() && isAdmin();
-      
-      // Equipment sub-collection
-      match /equipment/{equipmentId} {
-        // Tenant users can read all, client users can read their own
-        allow read: if isAuthenticated() && (
-          clientBelongsToUserTenant(clientId) ||
-          isClientUser(clientId)
-        );
-        // Tenant safety officers can create/update/delete
-        allow create: if isAuthenticated() && ((clientBelongsToUserTenant(clientId) && isSafetyOfficer()) || isClientUser(clientId));
-        allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
-        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
-      }
-      
-      // Inspections sub-collection
-      match /inspections/{inspectionId} {
-        allow read: if isAuthenticated() && (
-          clientBelongsToUserTenant(clientId) ||
-          isClientUser(clientId)
-        );
-        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
-        allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
-        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
-      }
-      
-      // Findings sub-collection
-      match /findings/{findingId} {
-        allow read: if isAuthenticated() && (
-          isAdmin() ||
-          clientBelongsToUserTenant(clientId) ||
-          isClientUser(clientId)
-        );
-        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isSafetyOfficer();
-        allow update: if isAuthenticated() && (
-          isAdmin() ||
-          clientBelongsToUserTenant(clientId) ||
-          isClientUser(clientId)  // Client can update finding status
-        );
-        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
-      }
-      
-      // Documents sub-collection
-      match /documents/{documentId} {
-        allow read: if isAuthenticated() && (
-          clientBelongsToUserTenant(clientId) ||
-          isClientUser(clientId)
-        );
-        allow create: if isAuthenticated() && clientBelongsToUserTenant(clientId);
-        allow update: if isAuthenticated() && clientBelongsToUserTenant(clientId);
-        allow delete: if isAuthenticated() && clientBelongsToUserTenant(clientId) && isAdmin();
-      }
-    }
-
-    // System Modules (for dynamic module loading)
-    match /system_modules/{moduleId} {
+    match /filled_forms/{formId} {
       allow read: if isAuthenticated();
-      allow write: if hasRole('super_admin');
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
-
-
+    
+    match /filledForms/{formId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Equipment & Inspections (global)
+    // ============================================
+    match /equipment/{equipmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    match /inspections/{inspectionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    match /findings/{findingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+    
+    // ============================================
+    // Catch-all for any other collections (development mode)
+    // TODO: Remove or restrict in production
+    // ============================================
+    match /{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
   }
 }
