@@ -38,7 +38,7 @@ export const useAnalytics = () => {
       setLoading(true);
       try {
         // 1. שליפת כל הלקוחות (Tenants)
-        const tenantsRef = collection(firestore, 'tenants');
+        const tenantsRef = collection(firestore, 'clients');
         const tenantsSnap = await getDocs(tenantsRef);
         
         const totalClients = tenantsSnap.size;

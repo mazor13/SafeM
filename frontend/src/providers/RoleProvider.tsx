@@ -40,6 +40,7 @@ interface RoleContextType {
   role: UserRole;
   clientId: string | null;
   tenantId: string | null;
+  allowedFacilities: string[];
   loading: boolean;
   
   // Flags
@@ -87,6 +88,7 @@ const RoleContext = createContext<RoleContextType>({
   role: null,
   clientId: null,
   tenantId: null,
+  allowedFacilities: [],
   loading: true,
   isConsultant: false,
   isClient: false,
@@ -204,6 +206,7 @@ export const RoleProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<UserRole>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [allowedFacilities, setAllowedFacilities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -223,6 +226,7 @@ export const RoleProvider = ({ children }: { children: React.ReactNode }) => {
           setRole(data.role as UserRole);
           setClientId(data.clientId || null);
           setTenantId(data.tenantId || null);
+          setAllowedFacilities(data.allowedFacilities || []);
         }
       } catch (error) {
         console.error('Error fetching user role:', error);
@@ -251,6 +255,7 @@ export const RoleProvider = ({ children }: { children: React.ReactNode }) => {
       role,
       clientId,
       tenantId,
+      allowedFacilities,
       loading: loading || authLoading,
       isConsultant,
       isClient,

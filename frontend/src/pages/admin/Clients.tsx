@@ -37,7 +37,7 @@ export default function Clients() {
       const user = auth.currentUser;
       setCurrentUid(user ? user.uid : 'לא מחובר');
 
-      const clientsRef = collection(firestore, 'tenants');
+      const clientsRef = collection(firestore, 'clients');
       const q = query(clientsRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       

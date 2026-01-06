@@ -6,9 +6,14 @@ import {
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { firestore, auth } from '../../firebase';
 import { 
-  UserPlus, Mail, Shield, 
+  UserPlus, Mail, Shield, Building2,
   CheckCircle2, XCircle, Search, Trash2, RotateCcw
 } from 'lucide-react';
+
+interface Facility {
+  id: string;
+  name: string;
+}
 
 interface UsersTabProps {
   clientId: string;
@@ -23,23 +28,34 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Facilities
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  
   // Form State
   const [newUser, setNewUser] = useState({ 
     email: '', 
     fullName: '', 
-    role: 'inspector' 
+    role: 'inspector',
+    allowedFacilities: [] as string[]
   });
 
+  // Load users
   useEffect(() => {
-    // מביאים את כל המשתמשים של הלקוח
     const q = query(collection(firestore, 'users'), where('tenantId', '==', clientId));
-    
     const unsub = onSnapshot(q, (snapshot) => {
       const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      // 🟢 CLIENT-SIDE FILTERING: מסננים החוצה משתמשים שמחוקים "רכית"
-      // אנחנו עושים את הסינון כאן כדי להימנע מבעיות אינדקס מורכבות כרגע
       const activeUsers = allUsers.filter((u: any) => u.status !== 'deleted');
       setUsers(activeUsers);
+    });
+    return () => unsub();
+  }, [clientId]);
+
+  // Load facilities
+  useEffect(() => {
+    const q = query(collection(firestore, `clients/${clientId}/facilities`));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
+      setFacilities(data);
     });
     return () => unsub();
   }, [clientId]);
@@ -49,7 +65,6 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // 🟢 SOFT DELETE IMPLEMENTATION
   const handleDelete = async (userId: string, userName: string, userEmail: string) => {
     if (!window.confirm(`האם אתה בטוח שברצונך למחוק את ${userName}? \n(המשתמש יועבר לארכיון והרישיון ישוחרר)`)) {
       return;
@@ -57,27 +72,23 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
 
     try {
       const batch = writeBatch(firestore);
-      
-      // 1. במקום למחוק פיזית, אנחנו מעדכנים סטטוס ל-'deleted'
       const userRef = doc(firestore, 'users', userId);
       batch.update(userRef, {
         status: 'deleted',
         deletedAt: serverTimestamp(),
-        previousStatus: 'active' // שומרים את הסטטוס הקודם ליתר ביטחון
+        previousStatus: 'active'
       });
 
-      // 2. עדיין מורידים את המכסה (Quota) כי המשתמש לא פעיל יותר
-      const tenantRef = doc(firestore, 'tenants', clientId);
+      const tenantRef = doc(firestore, 'clients', clientId);
       batch.update(tenantRef, {
         usersCount: increment(-1),
         lastUpdated: serverTimestamp()
       });
 
-      // 3. תיעוד בלוגים
       const auditRef = doc(collection(firestore, 'audit_logs'));
       batch.set(auditRef, {
         tenantId: clientId,
-        action: 'DELETE_USER', // Soft Delete
+        action: 'DELETE_USER',
         targetId: userId,
         targetName: userName,
         performedBy: 'Admin Console',
@@ -110,7 +121,6 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
     }
   };
 
-  // 🟢 NORMALIZATION IMPLEMENTATION
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentCount >= limit) {
@@ -120,18 +130,14 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
 
     setIsLoading(true);
     try {
-      // 1. Normalization: המרה לאותיות קטנות וניקוי רווחים
       const normalizedEmail = newUser.email.trim().toLowerCase();
 
-      // בדיקת כפילויות
       const duplicateQuery = query(
         collection(firestore, 'users'), 
         where('tenantId', '==', clientId),
         where('email', '==', normalizedEmail)
       );
       
-      // הערה: כרגע הבדיקה תמצא גם משתמשים "מחוקים".
-      // במערכת מושלמת, היינו מציעים "לשחזר" משתמש מחוק, אבל כרגע פשוט נחסום כפילות.
       const duplicateSnapshot = await getDocs(duplicateQuery);
       
       if (!duplicateSnapshot.empty) {
@@ -149,14 +155,15 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
       const userRef = doc(collection(firestore, 'users'));
       batch.set(userRef, {
         tenantId: clientId,
-        email: normalizedEmail, // שומרים את המייל המנורמל
+        email: normalizedEmail,
         fullName: newUser.fullName,
         role: newUser.role,
+        allowedFacilities: newUser.role === 'org_admin' ? ['*'] : newUser.allowedFacilities,
         status: 'pending', 
         createdAt: serverTimestamp()
       });
 
-      const tenantRef = doc(firestore, 'tenants', clientId);
+      const tenantRef = doc(firestore, 'clients', clientId);
       batch.update(tenantRef, {
         usersCount: increment(1),
         lastUpdated: serverTimestamp()
@@ -169,13 +176,17 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
         targetId: userRef.id,
         targetName: newUser.fullName,
         performedBy: 'Admin Console',
-        details: { role: newUser.role, email: normalizedEmail },
+        details: { 
+          role: newUser.role, 
+          email: normalizedEmail,
+          allowedFacilities: newUser.allowedFacilities
+        },
         timestamp: serverTimestamp()
       });
 
       await batch.commit();
       setShowInviteModal(false);
-      setNewUser({ email: '', fullName: '', role: 'inspector' });
+      setNewUser({ email: '', fullName: '', role: 'inspector', allowedFacilities: [] });
       alert("הזמנה נשלחה בהצלחה!"); 
     } catch (err) {
       console.error(err);
@@ -183,6 +194,23 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleFacility = (facilityId: string) => {
+    setNewUser(prev => ({
+      ...prev,
+      allowedFacilities: prev.allowedFacilities.includes(facilityId)
+        ? prev.allowedFacilities.filter(f => f !== facilityId)
+        : [...prev.allowedFacilities, facilityId]
+    }));
+  };
+
+  const getFacilityNames = (facilityIds: string[]) => {
+    if (!facilityIds || facilityIds.length === 0) return 'ללא הגבלה';
+    if (facilityIds.includes('*')) return 'כל המתחמים';
+    return facilityIds
+      .map(id => facilities.find(f => f.id === id)?.name || id)
+      .join(', ');
   };
 
   return (
@@ -221,6 +249,11 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
                     <span className="w-1 h-1 bg-slate-700 rounded-full"></span>
                     <Shield size={12} /> {user.role === 'org_admin' ? 'מנהל ראשי' : user.role === 'manager' ? 'מנהל עבודה' : 'מפקח'}
                   </div>
+                  {user.allowedFacilities && user.allowedFacilities.length > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-slate-600 mt-1">
+                      <Building2 size={10} /> {getFacilityNames(user.allowedFacilities)}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -247,13 +280,15 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
               <button onClick={() => setShowInviteModal(false)} className="text-slate-500 hover:text-white"><XCircle /></button>
             </div>
             <form onSubmit={handleInvite} className="space-y-4">
-              <div><label className="text-xs font-bold text-slate-400 block mb-2">שם מלא</label><input required className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.fullName} onChange={e => setNewUser({...newUser, fullName: e.target.value})}/></div>
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-2">שם מלא</label>
+                <input required className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.fullName} onChange={e => setNewUser({...newUser, fullName: e.target.value})}/>
+              </div>
               
-              {/* Added helper text for normalization */}
               <div>
                 <label className="text-xs font-bold text-slate-400 block mb-2">כתובת אימייל</label>
                 <input required type="email" className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})}/>
-                <p className="text-[10px] text-slate-500 mt-1">המערכת תמיר אוטומטית לאותיות קטנות (Lowercase).</p>
+                <p className="text-[10px] text-slate-500 mt-1">המערכת תמיר אוטומטית לאותיות קטנות.</p>
               </div>
               
               <div>
@@ -266,7 +301,46 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
                     </button>))}
                 </div>
               </div>
-              <button type="submit" disabled={isLoading} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl mt-4 shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2">{isLoading ? 'שולח...' : 'שלח הזמנה וצור משתמש'}</button>
+
+              {/* Facilities Selection - only show if not org_admin */}
+              {newUser.role !== 'org_admin' && facilities.length > 0 && (
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-2">
+                    <Building2 size={12} className="inline ml-1" />
+                    מתחמים מורשים
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                    {facilities.map(facility => (
+                      <button
+                        type="button"
+                        key={facility.id}
+                        onClick={() => toggleFacility(facility.id)}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all text-right ${
+                          newUser.allowedFacilities.includes(facility.id)
+                            ? 'bg-emerald-600 border-emerald-500 text-white'
+                            : 'bg-slate-800 border-white/5 text-slate-400 hover:bg-slate-700'
+                        }`}
+                      >
+                        {facility.name}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {newUser.allowedFacilities.length === 0 ? 'לא נבחרו מתחמים - המשתמש יראה הכל' : `נבחרו ${newUser.allowedFacilities.length} מתחמים`}
+                  </p>
+                </div>
+              )}
+
+              {newUser.role === 'org_admin' && (
+                <p className="text-xs text-amber-400 bg-amber-500/10 p-2 rounded-lg">
+                  <Shield size={12} className="inline ml-1" />
+                  מנהל ראשי מקבל גישה לכל המתחמים אוטומטית
+                </p>
+              )}
+
+              <button type="submit" disabled={isLoading} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl mt-4 shadow-lg shadow-emerald-500/20 transition-all flex justify-center items-center gap-2">
+                {isLoading ? 'שולח...' : 'שלח הזמנה וצור משתמש'}
+              </button>
             </form>
           </div>
         </div>

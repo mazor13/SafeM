@@ -47,6 +47,7 @@ export interface Tenant extends BaseEntity {
   
   // Health
   healthScore: number;            // 0-100
+  domain?: string;                // Company domain
   lastActive?: Date | Timestamp;
   
   // Branding (White Label)

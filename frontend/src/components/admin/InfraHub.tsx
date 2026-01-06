@@ -68,7 +68,7 @@ export default function InfraHub({ clientId, clientName, clientPlan, initialData
           status: 'active',
           createdAt: new Date().toISOString()
       };
-      const tenantRef = doc(firestore, 'tenants', clientId);
+      const tenantRef = doc(firestore, 'clients', clientId);
       await updateDoc(tenantRef, { storageEngines: arrayUnion(newEngine) });
       setActiveEngines([...activeEngines, newEngine]);
       setActiveTab('list');
@@ -77,7 +77,7 @@ export default function InfraHub({ clientId, clientName, clientPlan, initialData
 
   const handleRemoveEngine = async (engine: any) => {
       if (!confirm('האם אתה בטוח שברצונך למחוק חיבור זה?')) return;
-      const tenantRef = doc(firestore, 'tenants', clientId);
+      const tenantRef = doc(firestore, 'clients', clientId);
       try {
           await updateDoc(tenantRef, { storageEngines: arrayRemove(engine) });
           setActiveEngines(activeEngines.filter(e => e.id !== engine.id));

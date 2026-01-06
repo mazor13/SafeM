@@ -16,7 +16,7 @@ export default function CommandCenter() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const q = query(collection(firestore, 'tenants'));
+        const q = query(collection(firestore, 'clients'));
         const sn = await getDocs(q);
         setStats(prev => ({ ...prev, activeTenants: sn.size }));
       } catch (err) {

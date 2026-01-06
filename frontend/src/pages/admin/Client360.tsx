@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { firestore } from '../../firebase';
-import { ArrowRight, Users, Database, ShieldAlert, Globe, Zap, LayoutDashboard, CreditCard, Contact, Clock, History } from 'lucide-react';
+import { ArrowRight, Users, Database, ShieldAlert, Globe, Zap, LayoutDashboard, CreditCard, Contact, Clock, History, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import UsersTab from '../../components/admin/UsersTab';
 import InfraHub from '../../components/admin/InfraHub';
@@ -10,16 +10,17 @@ import OpsCenter from '../../components/admin/ops/OpsCenter';
 import ContactsTab from '../../components/admin/ContactsTab';
 import EscalationTab from '../../components/admin/EscalationTab';
 import AuditLogTab from '../../components/admin/AuditLogTab';
+import FacilitiesTab from '../../components/admin/FacilitiesTab';
 
 export default function Client360() {
   const { clientId } = useParams();
   const navigate = useNavigate();
   const [client, setClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'escalation' | 'users' | 'infra' | 'ops' | 'history' | 'billing'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'contacts' | 'escalation' | 'users' | 'facilities' | 'infra' | 'ops' | 'history' | 'billing'>('overview');
 
   useEffect(() => {
     if (!clientId) return;
-    const unsub = onSnapshot(doc(firestore, 'tenants', clientId), (sn) => {
+    const unsub = onSnapshot(doc(firestore, 'clients', clientId), (sn) => {
       if (sn.exists()) setClient({ id: sn.id, ...sn.data() });
     });
     return () => unsub();
@@ -32,6 +33,7 @@ export default function Client360() {
     { id: 'contacts', label: 'אנשי קשר', icon: Contact },
     { id: 'escalation', label: 'הסלמה', icon: Clock },
     { id: 'users', label: 'צוות', icon: Users },
+    { id: 'facilities', label: 'מתחמים', icon: Building2 },
     { id: 'infra', label: 'תשתיות', icon: Database },
     { id: 'ops', label: 'מרכז בקרה', icon: ShieldAlert },
     { id: 'history', label: 'היסטוריה', icon: History },
@@ -86,6 +88,7 @@ export default function Client360() {
               )}
               
               {activeTab === 'users' && <UsersTab clientId={client.id} clientName={client.name} limit={client.usersLimit} currentCount={client.usersCount || 0} />}
+              {activeTab === 'facilities' && <FacilitiesTab clientId={client.id} clientName={client.name} />}
               {activeTab === 'infra' && <InfraHub clientId={client.id} clientName={client.name} clientPlan={client.plan} initialData={client} />}
               
               {/* החיבור למרכז הבקרה */}

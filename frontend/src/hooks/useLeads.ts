@@ -161,7 +161,7 @@ export function useLeads(options: UseLeadsOptions = {}): UseLeadsReturn {
     if (!leadDoc) throw new Error('Lead not found');
 
     // Create tenant
-    const tenantRef = await addDoc(collection(firestore, 'tenants'), {
+    const tenantRef = await addDoc(collection(firestore, 'clients'), {
       name: tenantData.name || leadDoc.company || `${leadDoc.firstName} ${leadDoc.lastName}`,
       domain: tenantData.domain,
       plan: tenantData.plan || 'basic',

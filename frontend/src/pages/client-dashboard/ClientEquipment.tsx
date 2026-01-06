@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { collection, getDocs, addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, doc, Timestamp, onSnapshot } from 'firebase/firestore';
 import { firestore as db, auth } from '../../firebase';
 import { useSystem } from '../../providers/SystemProvider';
 import { useRole } from '../../providers/RoleProvider';
@@ -15,7 +15,8 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
 interface Equipment {
@@ -26,6 +27,7 @@ interface Equipment {
   model?: string;
   serialNumber?: string;
   location?: string;
+  facilityId?: string;
   status: 'active' | 'maintenance' | 'retired';
   nextInspectionDate?: Date;
   lastInspectionDate?: Date;
@@ -50,13 +52,14 @@ const typeIcons: Record<string, any> = {
 export default function ClientEquipment() {
   const { clientId } = useParams<{ clientId: string }>();
   const { modules } = useSystem();
-  const { can, isConsultant, isClient } = useRole();
+  const { can, isConsultant, isClient, allowedFacilities } = useRole();
   
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
+  const [facilities, setFacilities] = useState<{id: string, name: string}[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -70,6 +73,7 @@ export default function ClientEquipment() {
     nextInspectionDate: '',
     tco: 0,
     isCritical: false,
+    facilityId: '',
   });
 
   // Check if selected type is critical
@@ -105,6 +109,17 @@ export default function ClientEquipment() {
     fetchEquipment();
   }, [clientId]);
 
+  // Load facilities
+  useEffect(() => {
+    if (!clientId) return;
+    const q = collection(db, `clients/${clientId}/facilities`);
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
+      setFacilities(data);
+    });
+    return () => unsub();
+  }, [clientId]);
+
   const activeModules = modules.filter(m => m.isActive);
   
   // Build filter options from EQUIPMENT_TYPES
@@ -117,9 +132,14 @@ export default function ClientEquipment() {
     }))
   ];
 
-  const filteredEquipment = activeFilter === 'all' 
-    ? equipment 
-    : equipment.filter(e => e.type === activeFilter);
+  // סינון לפי מתחמים מורשים
+  const facilityFilteredEquipment = allowedFacilities.length === 0 || allowedFacilities.includes("*")
+    ? equipment
+    : equipment.filter(e => !e.facilityId || allowedFacilities.includes(e.facilityId));
+  
+  const filteredEquipment = activeFilter === "all" 
+    ? facilityFilteredEquipment 
+    : facilityFilteredEquipment.filter(e => e.type === activeFilter);
 
   const toDateStr = (ts: any) => {
     if (!ts) return '';
@@ -139,6 +159,7 @@ export default function ClientEquipment() {
         model: item.model || '',
         serialNumber: item.serialNumber || '',
         location: item.location || '',
+        facilityId: item.facilityId || '',
         status: item.status,
         nextInspectionDate: toDateStr(item.nextInspectionDate),
         tco: item.tco || 0,
@@ -157,6 +178,7 @@ export default function ClientEquipment() {
         nextInspectionDate: '',
         tco: 0,
         isCritical: false,
+        facilityId: '',
       });
     }
     setIsModalOpen(true);
@@ -290,7 +312,7 @@ export default function ClientEquipment() {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מכשיר</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום וסטטוס</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">מיקום, מתחם וסטטוס</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">TCO</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">פעולות אחרונות</th>
               {canEditEquipment && (
@@ -323,6 +345,12 @@ export default function ClientEquipment() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-500">{item.location || '-'}</div>
+                    {item.facilityId && facilities.find(f => f.id === item.facilityId) && (
+                      <div className="text-xs text-indigo-500 flex items-center gap-1 mt-1">
+                        <BuildingOfficeIcon className="w-3 h-3" />
+                        {facilities.find(f => f.id === item.facilityId)?.name}
+                      </div>
+                    )}
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                       item.status === 'active' ? 'bg-green-100 text-green-800' :
                       item.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
@@ -458,6 +486,24 @@ export default function ClientEquipment() {
                   className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
+              {facilities.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <BuildingOfficeIcon className="w-4 h-4 inline ml-1" />
+                    מתחם
+                  </label>
+                  <select
+                    value={formData.facilityId}
+                    onChange={(e) => setFormData({ ...formData, facilityId: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 p-2 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">-- בחר מתחם --</option>
+                    {facilities.map(f => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">תאריך בדיקה הבא</label>

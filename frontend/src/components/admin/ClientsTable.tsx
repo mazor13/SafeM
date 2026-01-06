@@ -10,7 +10,7 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
-import { ClientData } from '../../hooks/useClients.old';
+import { Tenant } from '../../types/safety';
 import { Search, ChevronDown, ChevronUp, MoreHorizontal, Globe, AlertCircle } from 'lucide-react';
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -37,20 +37,20 @@ const HealthBar = ({ score }: { score: number }) => (
   </div>
 );
 
-export default function ClientsTable({ data }: { data: ClientData[] }) {
+export default function ClientsTable({ data }: { data: Tenant[] }) {
   const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
 
-  const columns = useMemo<ColumnDef<ClientData>[]>(() => [
+  const columns = useMemo<ColumnDef<Tenant>[]>(() => [
     {
       header: 'לקוח',
       accessorKey: 'name',
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold border border-indigo-500/30">
-            {row.original.logoUrl ? (
-                <img src={row.original.logoUrl} alt="" className="w-full h-full object-cover rounded-xl" />
+            {row.original.branding?.logoUrl ? (
+                <img src={row.original.branding?.logoUrl} alt="" className="w-full h-full object-cover rounded-xl" />
             ) : (
                 row.original.name[0]
             )}

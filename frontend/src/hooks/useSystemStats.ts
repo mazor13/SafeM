@@ -20,7 +20,7 @@ export function useSystemStats() {
 
   useEffect(() => {
     // מאזין לכל הלקוחות כדי לחשב נתונים בזמן אמת
-    const q = query(collection(firestore, 'tenants'));
+    const q = query(collection(firestore, 'clients'));
     
     const unsub = onSnapshot(q, (snap) => {
       let users = 0;

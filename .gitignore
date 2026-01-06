@@ -24,3 +24,4 @@ service-account.json
 functions/lib/
 frontend/serviceAccountKey.json
 frontend/ozen-staging-2025-firebase-adminsdk-fbsvc-e582bc321f.json
+serviceAccountKey.json

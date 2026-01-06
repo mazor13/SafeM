@@ -62,7 +62,7 @@ export default function CreateClient() {
       }
       setSlugStatus('checking');
       try {
-        const q = query(collection(firestore, 'tenants'), where('domain', '==', formData.domain));
+        const q = query(collection(firestore, 'clients'), where('domain', '==', formData.domain));
         const snapshot = await getDocs(q);
         setSlugStatus(snapshot.empty ? 'available' : 'taken');
       } catch (err) {
@@ -86,7 +86,7 @@ export default function CreateClient() {
       const batch = writeBatch(firestore); // מתחילים אצווה (Batch)
 
       // 1. הכנת מזהים ייחודיים מראש
-      const newTenantRef = doc(collection(firestore, 'tenants'));
+      const newTenantRef = doc(collection(firestore, 'clients'));
       const newUserRef = doc(collection(firestore, 'users'));
 
       // 2. הכנת מסמך הלקוח (Tenant)

@@ -46,7 +46,7 @@ const ConvertModal = ({ isOpen, onClose, lead, onSuccess }: {
     setLoading(true);
     try {
       // 1. Create new tenant
-      const tenantRef = await addDoc(collection(firestore, 'tenants'), {
+      const tenantRef = await addDoc(collection(firestore, 'clients'), {
         name: tenantData.name,
         domain: tenantData.domain,
         plan: tenantData.plan,

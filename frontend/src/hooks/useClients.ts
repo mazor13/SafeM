@@ -87,7 +87,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
       setLoading(true);
       setError(null);
 
-      const clientsRef = collection(firestore, 'tenants');
+      const clientsRef = collection(firestore, 'clients');
       let q = query(clientsRef, orderBy('createdAt', 'desc'));
 
       if (status) {
@@ -114,7 +114,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
   // Real-time or one-time fetch
   useEffect(() => {
     if (realtime) {
-      const clientsRef = collection(firestore, 'tenants');
+      const clientsRef = collection(firestore, 'clients');
       let q = query(clientsRef, orderBy('createdAt', 'desc'));
 
       if (status) {
@@ -181,7 +181,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
       createdBy: data.createdBy || '',
     };
 
-    const docRef = await addDoc(collection(firestore, 'tenants'), clientData);
+    const docRef = await addDoc(collection(firestore, 'clients'), clientData);
 
     // Log action
     await logAction(
@@ -203,7 +203,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
 
   // Update client
   const updateClient = async (id: string, data: Partial<Tenant>): Promise<void> => {
-    const clientRef = doc(firestore, 'tenants', id);
+    const clientRef = doc(firestore, 'clients', id);
     
     // Get previous data for audit
     const prevDoc = await getDoc(clientRef);
@@ -231,7 +231,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
 
   // Delete client
   const deleteClient = async (id: string): Promise<void> => {
-    const clientRef = doc(firestore, 'tenants', id);
+    const clientRef = doc(firestore, 'clients', id);
     
     // Get name for audit
     const prevDoc = await getDoc(clientRef);
@@ -260,7 +260,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
     id: string, 
     settings: EscalationSettings
   ): Promise<void> => {
-    const clientRef = doc(firestore, 'tenants', id);
+    const clientRef = doc(firestore, 'clients', id);
     
     await updateDoc(clientRef, {
       escalationSettings: settings,
@@ -318,7 +318,7 @@ export function useClient(clientId: string | undefined): UseClientReturn {
       setError(null);
 
       // Fetch client
-      const clientRef = doc(firestore, 'tenants', clientId);
+      const clientRef = doc(firestore, 'clients', clientId);
       const clientDoc = await getDoc(clientRef);
 
       if (clientDoc.exists()) {
@@ -362,7 +362,7 @@ export function useClient(clientId: string | undefined): UseClientReturn {
     }
 
     // Subscribe to client
-    const clientRef = doc(firestore, 'tenants', clientId);
+    const clientRef = doc(firestore, 'clients', clientId);
     const unsubClient = onSnapshot(
       clientRef,
       (doc) => {
@@ -424,7 +424,7 @@ export function useClient(clientId: string | undefined): UseClientReturn {
   const updateClient = async (data: Partial<Tenant>): Promise<void> => {
     if (!clientId || !client) return;
 
-    const clientRef = doc(firestore, 'tenants', clientId);
+    const clientRef = doc(firestore, 'clients', clientId);
 
     await updateDoc(clientRef, {
       ...data,
@@ -446,7 +446,7 @@ export function useClient(clientId: string | undefined): UseClientReturn {
   const updateEscalationSettings = async (settings: EscalationSettings): Promise<void> => {
     if (!clientId) return;
 
-    const clientRef = doc(firestore, 'tenants', clientId);
+    const clientRef = doc(firestore, 'clients', clientId);
 
     await updateDoc(clientRef, {
       escalationSettings: settings,

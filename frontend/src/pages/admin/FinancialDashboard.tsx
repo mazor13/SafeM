@@ -7,7 +7,7 @@ export default function FinancialDashboard() {
 
   const fetchFinancials = async () => {
     // שליפת כל הלקוחות שיש להם הגדרות Enterprise
-    const q = query(collection(firestore, 'tenants'), where('plan', '==', 'enterprise'));
+    const q = query(collection(firestore, 'clients'), where('plan', '==', 'enterprise'));
     const snap = await getDocs(q);
     setAccounts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   };
