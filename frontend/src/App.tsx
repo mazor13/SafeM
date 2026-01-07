@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
 import AdminLayout from './layouts/AdminLayout';
 import AuthProvider from './providers/AuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -59,6 +60,7 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
         
         {/* Client Portal Routes - Protected for authenticated users */}

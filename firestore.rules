@@ -51,6 +51,8 @@ service cloud.firestore {
     // Users
     // ============================================
     match /users/{userId} {
+      // Allow reading pending invitations without auth
+      allow read: if !isAuthenticated() && resource.data.status == "pending";
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }

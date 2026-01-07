@@ -40,7 +40,7 @@ export default function Login() {
         // Redirect based on role
         if (role === 'super_admin' || role === 'admin' || role === 'system_admin') {
           navigate('/admin');
-        } else if (role === 'client_user' && clientId) {
+        } else if ((role === 'client_user' || role === 'org_admin' || role === 'manager') && clientId) {
           navigate(`/portal/${clientId}`);
         } else if (role === 'inspector' && clientId) {
           navigate(`/portal/${clientId}`);

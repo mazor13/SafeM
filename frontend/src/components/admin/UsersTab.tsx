@@ -27,6 +27,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
   const [searchTerm, setSearchTerm] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
   
   // Facilities
   const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -88,6 +89,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
       const auditRef = doc(collection(firestore, 'audit_logs'));
       batch.set(auditRef, {
         tenantId: clientId,
+        clientId: clientId,
         action: 'DELETE_USER',
         targetId: userId,
         targetName: userName,
@@ -155,6 +157,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
       const userRef = doc(collection(firestore, 'users'));
       batch.set(userRef, {
         tenantId: clientId,
+        clientId: clientId,
         email: normalizedEmail,
         fullName: newUser.fullName,
         role: newUser.role,
@@ -172,6 +175,7 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
       const auditRef = doc(collection(firestore, 'audit_logs'));
       batch.set(auditRef, {
         tenantId: clientId,
+        clientId: clientId,
         action: 'INVITE_USER',
         targetId: userRef.id,
         targetName: newUser.fullName,
@@ -187,7 +191,8 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
       await batch.commit();
       setShowInviteModal(false);
       setNewUser({ email: '', fullName: '', role: 'inspector', allowedFacilities: [] });
-      alert("הזמנה נשלחה בהצלחה!"); 
+      const link = `${window.location.origin}/register?token=${userRef.id}&email=${encodeURIComponent(normalizedEmail)}`;
+      setInviteLink(link); 
     } catch (err) {
       console.error(err);
       alert("שגיאה ביצירת משתמש");
@@ -342,6 +347,39 @@ export default function UsersTab({ clientId, clientName, limit, currentCount }: 
                 {isLoading ? 'שולח...' : 'שלח הזמנה וצור משתמש'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Link Modal */}
+      {inviteLink && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-white/10 w-full max-w-lg rounded-3xl p-6 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+              </div>
+              <h2 className="text-xl font-bold text-white">המשתמש נוצר בהצלחה!</h2>
+              <p className="text-slate-400 text-sm mt-2">שלח את הלינק הבא למשתמש להשלמת ההרשמה</p>
+            </div>
+            <div className="bg-slate-800 rounded-xl p-4 mb-4">
+              <p className="text-xs text-slate-500 mb-2">לינק הזמנה:</p>
+              <p className="text-sm text-indigo-400 break-all font-mono">{inviteLink}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { navigator.clipboard.writeText(inviteLink); alert("הלינק הועתק!"); }}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all"
+              >
+                העתק לינק
+              </button>
+              <button
+                onClick={() => setInviteLink(null)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-all"
+              >
+                סגור
+              </button>
+            </div>
           </div>
         </div>
       )}
