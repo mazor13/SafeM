@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { collection, getDocs, query, orderBy, doc, updateDoc, Timestamp, arrayUnion } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, updateDoc, Timestamp, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { firestore as db, auth } from '../../firebase';
 import { useRole } from '../../providers/RoleProvider';
 import { Finding, FindingSeverity, FindingStatus, FindingComment } from '../../types/finding';
@@ -36,7 +36,7 @@ const statusConfig: Record<FindingStatus, { label: string; color: string; bgColo
 
 export default function ClientFindings() {
   const { clientId } = useParams<{ clientId: string }>();
-  const { can, isClient, isConsultant } = useRole();
+  const { can, isClient, isConsultant, allowedFacilities } = useRole();
   
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,18 +78,23 @@ export default function ClientFindings() {
     fetchFindings();
   }, [clientId]);
 
-  const filteredFindings = findings.filter(f => {
-    if (statusFilter !== 'all' && f.status !== statusFilter) return false;
-    if (severityFilter !== 'all' && f.severity !== severityFilter) return false;
+  // סינון לפי מתחמים מורשים
+  const facilityFilteredFindings = allowedFacilities.length === 0 || allowedFacilities.includes("*")
+    ? findings
+    : findings.filter(f => !f.facilityId || allowedFacilities.includes(f.facilityId));
+
+  const filteredFindings = facilityFilteredFindings.filter(f => {
+    if (statusFilter !== "all" && f.status !== statusFilter) return false;
+    if (severityFilter !== "all" && f.severity !== severityFilter) return false;
     return true;
   });
 
   const stats = {
-    total: findings.length,
-    open: findings.filter(f => f.status === 'open').length,
-    inProgress: findings.filter(f => f.status === 'in_progress').length,
-    pendingApproval: findings.filter(f => f.status === 'pending_approval').length,
-    closed: findings.filter(f => f.status === 'closed').length,
+    total: facilityFilteredFindings.length,
+    open: facilityFilteredFindings.filter(f => f.status === 'open').length,
+    inProgress: facilityFilteredFindings.filter(f => f.status === 'in_progress').length,
+    pendingApproval: facilityFilteredFindings.filter(f => f.status === 'pending_approval').length,
+    closed: facilityFilteredFindings.filter(f => f.status === 'closed').length,
   };
 
   const formatDate = (timestamp: any) => {

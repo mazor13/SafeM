@@ -29,6 +29,7 @@ export interface Finding {
   
   // מיקום
   location?: string;
+  facilityId?: string;
   
   // תאריכים
   foundDate: Timestamp;

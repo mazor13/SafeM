@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { firestore as db } from '../../firebase';
 import { useClient } from '../../providers/ClientProvider';
+import { useRole } from '../../providers/RoleProvider';
 import {
   ClipboardDocumentCheckIcon,
   CalendarDaysIcon,
@@ -24,11 +25,13 @@ interface Inspection {
   inspector?: string;
   findings?: number;
   notes?: string;
+  facilityId?: string;
 }
 
 export default function ClientInspections() {
   const { clientId } = useParams<{ clientId: string }>();
   const { client } = useClient();
+  const { allowedFacilities } = useRole();
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'overdue'>('all');
@@ -108,11 +111,16 @@ export default function ClientInspections() {
     fetchInspections();
   }, [clientId]);
 
-  const filteredInspections = inspections.filter(insp => {
-    if (filter === 'all') return true;
-    if (filter === 'upcoming') return insp.status === 'scheduled';
-    if (filter === 'completed') return insp.status === 'completed';
-    if (filter === 'overdue') return insp.status === 'overdue';
+  // סינון לפי מתחמים מורשים
+  const facilityFilteredInspections = allowedFacilities.length === 0 || allowedFacilities.includes("*")
+    ? inspections
+    : inspections.filter(i => !i.facilityId || allowedFacilities.includes(i.facilityId));
+
+  const filteredInspections = facilityFilteredInspections.filter(insp => {
+    if (filter === "all") return true;
+    if (filter === "upcoming") return insp.status === "scheduled";
+    if (filter === "completed") return insp.status === "completed";
+    if (filter === "overdue") return insp.status === "overdue";
     return true;
   });
 
