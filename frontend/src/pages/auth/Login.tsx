@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
 import { doc, getDoc } from 'firebase/firestore';
 import { firestore as db, auth } from '../../firebase';
@@ -153,6 +153,7 @@ export default function Login() {
             {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'התחבר'}
           </button>
         </form>
+        <div className="mt-6 pt-4 border-t border-slate-200 text-center"><p className="text-xs text-slate-500">בהתחברות אתה מסכים ל<Link to="/terms" className="text-indigo-600 hover:underline mx-1">תנאי השימוש</Link> ול<Link to="/privacy" className="text-indigo-600 hover:underline mx-1">מדיניות הפרטיות</Link></p></div>
       </div>
     </div>
   );

@@ -6,6 +6,8 @@ import AdminLayout from './layouts/AdminLayout';
 import AuthProvider from './providers/AuthProvider';
 import ProtectedRoute from './components/ProtectedRoute';
 import Unauthorized from './pages/Unauthorized';
+// Legal Pages
+import { TermsOfService, PrivacyPolicy } from './pages/legal';
 
 // Admin Pages
 import DashboardBI from './pages/admin/DashboardBI';
@@ -62,6 +64,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         
         {/* Client Portal Routes - Protected for authenticated users */}
         <Route path="/portal/:clientId" element={
