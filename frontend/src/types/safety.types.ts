@@ -284,6 +284,7 @@ export interface Inspection {
   tenantId: string;
   clientId: string;
   locationId?: string;
+  facilityId?: string;  // ✅ Added for facility-based permissions
   templateId?: string;
   
   // Type and category
@@ -537,6 +538,7 @@ export interface ScheduledInspection {
   // What to inspect
   equipmentId?: string;
   locationId?: string;
+  facilityId?: string;  // ✅ Added for facility-based permissions
   templateId: string;
   category: SafetyDomain;
   
