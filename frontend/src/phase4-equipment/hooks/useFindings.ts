@@ -39,6 +39,8 @@ const FINDINGS_COLLECTION = 'findings';
 
 interface UseFindingsOptions {
   clientId?: string;
+  facilityId?: string;  // ✅ הוספה - סינון לפי מתחם
+  facilityIds?: string[];  // ✅ הוספה - סינון לפי מספר מתחמים
   equipmentId?: string;
   inspectionId?: string;
   filters?: FindingFilters;
@@ -57,7 +59,7 @@ interface UseFindingsReturn {
 }
 
 export function useFindings(options: UseFindingsOptions = {}): UseFindingsReturn {
-  const { clientId, equipmentId, inspectionId, filters, realtime = true } = options;
+  const { clientId, facilityId, facilityIds, equipmentId, inspectionId, filters, realtime = true } = options;
   
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,18 @@ export function useFindings(options: UseFindingsOptions = {}): UseFindingsReturn
     
     if (clientId) {
       constraints.push(where('clientId', '==', clientId));
+    }
+    // ✅ הוספה - סינון לפי מתחם בודד
+    if (facilityId) {
+      constraints.push(where('facilityId', '==', facilityId));
+    }
+    // ✅ הוספה - סינון לפי מספר מתחמים (למשתמשי פורטל)
+    if (facilityIds && facilityIds.length > 0 && !facilityId) {
+      // Firebase 'in' query supports up to 10 values
+      if (facilityIds.length <= 10) {
+        constraints.push(where('facilityId', 'in', facilityIds));
+      }
+      // If more than 10, we'll filter client-side
     }
     if (equipmentId) {
       constraints.push(where('equipmentId', '==', equipmentId));
@@ -91,11 +105,11 @@ export function useFindings(options: UseFindingsOptions = {}): UseFindingsReturn
     constraints.push(orderBy('foundDate', 'desc'));
     
     return constraints;
-  }, [clientId, equipmentId, inspectionId, filters]);
+  }, [clientId, facilityId, facilityIds, equipmentId, inspectionId, filters]);
 
   // Fetch findings
   useEffect(() => {
-    if (!clientId && !equipmentId && !inspectionId) {
+    if (!clientId && !equipmentId && !inspectionId && !facilityId && (!facilityIds || facilityIds.length === 0)) {
       setFindings([]);
       setLoading(false);
       return;
@@ -117,6 +131,11 @@ export function useFindings(options: UseFindingsOptions = {}): UseFindingsReturn
             id: doc.id,
             ...convertTimestamps(doc.data()),
           } as Finding));
+          
+          // ✅ Client-side filter for facilityIds > 10
+          if (facilityIds && facilityIds.length > 10 && !facilityId) {
+            items = items.filter(f => f.facilityId && facilityIds.includes(f.facilityId));
+          }
           
           // Client-side filters
           if (filters?.overdue) {
@@ -142,7 +161,7 @@ export function useFindings(options: UseFindingsOptions = {}): UseFindingsReturn
 
       return () => unsubscribe();
     }
-  }, [clientId, equipmentId, inspectionId, filters, buildConstraints, realtime, refreshKey]);
+  }, [clientId, facilityId, facilityIds, equipmentId, inspectionId, filters, buildConstraints, realtime, refreshKey]);
 
   // Calculate stats
   const stats = calculateFindingStats(findings);
@@ -229,12 +248,16 @@ function convertTimestamps(data: any): any {
 
 interface UseFindingStatsOptions {
   clientId?: string;
+  facilityId?: string;  // ✅ הוספה
+  facilityIds?: string[];  // ✅ הוספה
   dateRange?: { start: Date; end: Date };
 }
 
 export function useFindingStats(options: UseFindingStatsOptions = {}) {
   const { findings, loading, stats } = useFindings({
     clientId: options.clientId,
+    facilityId: options.facilityId,
+    facilityIds: options.facilityIds,
   });
 
   // Additional computed stats

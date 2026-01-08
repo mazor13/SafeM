@@ -29,6 +29,7 @@ export interface Finding {
   // Location
   locationId?: string;
   locationDescription?: string;
+  facilityId?: string;  // ✅ Added for facility-based permissions
   
   // Status
   status: FindingStatus;
