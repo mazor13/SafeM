@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { OnboardingWizard } from '../components/onboarding';
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -43,6 +44,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'reports']);
   const [pendingCount, setPendingCount] = useState<number>(0);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   // Fetch pending approvals count
   useEffect(() => {
@@ -65,6 +67,14 @@ export default function AdminLayout() {
     const interval = setInterval(fetchPendingCount, 60000); // Refresh every minute
     return () => clearInterval(interval);
   }, []);
+  
+  // Check if user needs onboarding
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem("safem_onboarding_complete");
+    if (!hasSeenOnboarding && user) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
 
   if (!loading && !user) {
     return <Navigate to="/login" replace />;
@@ -183,9 +193,26 @@ export default function AdminLayout() {
     );
   };
 
+  const handleOnboardingComplete = () => {
+    localStorage.setItem("safem_onboarding_complete", "true");
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingSkip = () => {
+    localStorage.setItem("safem_onboarding_complete", "true");
+    setShowOnboarding(false);
+  };
   return (
     <div className="flex h-screen bg-[#0f172a] overflow-hidden font-sans" dir="rtl">
       
+      {/* Onboarding Wizard */}
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+          userName={user?.displayName || undefined}
+        />
+      )}
       {/* Sidebar */}
       <aside className="w-72 bg-[#0f172a] text-white flex flex-col flex-shrink-0 border-l border-slate-800/50 z-50">
         
