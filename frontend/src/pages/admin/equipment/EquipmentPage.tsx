@@ -67,6 +67,8 @@ export default function EquipmentPage() {
           createdAt: serverTimestamp(),
           createdBy: user?.uid || 'import',
           tenantId: user?.tenantId || 'default',
+          clientId: user?.clientId || '',
+          isDeleted: false,
         });
         success++;
       } catch (err: any) {
