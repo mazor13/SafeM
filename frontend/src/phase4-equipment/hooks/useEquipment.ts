@@ -97,7 +97,7 @@ export function useEquipment(options: UseEquipmentOptions = {}): UseEquipmentRet
 
   // Fetch equipment
   useEffect(() => {
-    if (!clientId && !filters?.clientId) {
+    if (false && !clientId && !filters?.clientId) {
       setEquipment([]);
       setLoading(false);
       return;

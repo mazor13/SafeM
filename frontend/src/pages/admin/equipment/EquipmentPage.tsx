@@ -24,7 +24,7 @@ export default function EquipmentPage() {
   const { equipment, loading, error, stats, deleteEquipment, refresh } = useEquipment({ realtime: true });
   const [showImport, setShowImport] = useState(false);
 
-  const handleSelect = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}`);
+  const handleSelect = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
   const handleEdit = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
   const handleDelete = async (eq: Equipment) => {
     if (window.confirm(`האם למחוק את "${eq.name}"?`)) {
