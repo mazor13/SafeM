@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OnboardingWizard } from '../components/onboarding';
+import { GlobalSearch } from '../components/search';
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -296,7 +297,7 @@ export default function AdminLayout() {
       <main className="flex-1 overflow-y-auto bg-[#0f172a] relative">
         {/* Top Header Bar */}
         <div className="sticky top-0 z-10 bg-[#1e293b] border-b border-slate-700/50 px-6 py-3 flex justify-between items-center">
-          <div>{/* Breadcrumb placeholder */}</div>
+          <GlobalSearch />
           <div className="flex items-center gap-4">
             {/* Notification Bell */}
             <button
