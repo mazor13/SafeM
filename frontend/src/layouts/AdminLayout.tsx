@@ -29,7 +29,10 @@ import {
   PieChart,
   History,
   CheckCircle,
-  Bell
+  Bell,
+  Palette,
+  Cloud,
+  Zap
 } from 'lucide-react';
 
 interface NavItem {
@@ -143,6 +146,7 @@ export default function AdminLayout() {
     { name: 'מסמכים', to: '/admin/documents', icon: FileText },
     { name: 'פיננסים', to: '/admin/finance', icon: CreditCard },
     { name: 'מוצרים', to: '/admin/products', icon: Package },
+    { name: 'מיתוג', to: '/admin/branding', icon: Palette },
     { name: 'הגדרות', to: '/admin/settings', icon: Settings },
   ];
 
