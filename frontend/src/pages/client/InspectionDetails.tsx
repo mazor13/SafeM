@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { firestore, storage } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { firestore, storage, functions } from '../../firebase';
 import { compressImage } from '../../utils/imageUtils';
 import { 
   ArrowRightIcon, 
@@ -12,7 +13,8 @@ import {
   ChatBubbleBottomCenterTextIcon,
   CheckBadgeIcon,
   TrashIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline';
 
 export default function InspectionDetails() {
@@ -20,6 +22,7 @@ export default function InspectionDetails() {
   const navigate = useNavigate();
   const [inspection, setInspection] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   
   // ניהול העלאת תמונות
   const [uploadingItem, setUploadingItem] = useState<string | null>(null);
@@ -62,6 +65,45 @@ export default function InspectionDetails() {
       });
     } catch (error) {
       console.error("Error saving:", error);
+    }
+  };
+
+  // === יצירת PDF באמצעות Cloud Function ===
+  const handleGeneratePDF = async () => {
+    if (!inspection) return;
+    
+    setGeneratingPdf(true);
+    
+    try {
+      const generatePDF = httpsCallable(functions, 'generateInspectionPDF');
+      const result = await generatePDF({ inspection });
+      const data = result.data as { success: boolean; pdf: string; filename: string };
+      
+      if (data.success && data.pdf) {
+        // המרת base64 ל-Blob
+        const byteCharacters = atob(data.pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
+        
+        // יצירת קישור להורדה
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = data.filename || 'inspection.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("שגיאה ביצירת ה-PDF. נסה שוב.");
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -109,7 +151,7 @@ export default function InspectionDetails() {
 
   const getAnswer = (itemId: string) => inspection?.answers?.[itemId];
 
-  if (loading) return <div className="p-10 text-center">טוען...</div>;
+  if (loading) return <div className="p-10 text-center text-gray-900">טוען...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -131,11 +173,32 @@ export default function InspectionDetails() {
             <button onClick={() => navigate('/client')} className="text-gray-500 hover:text-gray-900 flex items-center text-sm">
               <ArrowRightIcon className="h-4 w-4 ml-1" /> יציאה
             </button>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-              inspection.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-            }`}>
-              {inspection.status === 'completed' ? 'הושלם' : 'בתהליך'}
-            </span>
+            <div className="flex items-center gap-2">
+              {/* PDF Download Button - Cloud Function */}
+              <button
+                onClick={handleGeneratePDF}
+                disabled={generatingPdf}
+                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-200 transition-colors disabled:opacity-50"
+              >
+                {generatingPdf ? (
+                  <>
+                    <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                    <span>מכין...</span>
+                  </>
+                ) : (
+                  <>
+                    <DocumentArrowDownIcon className="h-4 w-4" />
+                    <span>PDF</span>
+                  </>
+                )}
+              </button>
+              
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                inspection.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {inspection.status === 'completed' ? 'הושלם' : 'בתהליך'}
+              </span>
+            </div>
           </div>
           <h1 className="text-lg font-bold text-gray-900 leading-tight">{inspection.templateName}</h1>
           <p className="text-sm text-gray-500">{inspection.clientName} • {inspection.siteName}</p>
@@ -181,7 +244,7 @@ export default function InspectionDetails() {
                         {/* TEXT */}
                         {item.type === 'text' && (
                           <div className="relative">
-                            <textarea rows={2} placeholder="כתוב הערה..." className="w-full border border-gray-300 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500" value={answer || ''} onBlur={(e) => handleAnswer(item.id, e.target.value)} onChange={(e) => setInspection({...inspection, answers: {...inspection.answers, [item.id]: e.target.value}})} />
+                            <textarea rows={2} placeholder="כתוב הערה..." className="w-full border border-gray-300 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white" value={answer || ''} onBlur={(e) => handleAnswer(item.id, e.target.value)} onChange={(e) => setInspection({...inspection, answers: {...inspection.answers, [item.id]: e.target.value}})} />
                             <ChatBubbleBottomCenterTextIcon className="h-5 w-5 text-gray-400 absolute left-3 bottom-3" />
                           </div>
                         )}
@@ -189,7 +252,7 @@ export default function InspectionDetails() {
                         {/* NUMBER */}
                         {item.type === 'number' && (
                           <div className="flex items-center gap-2">
-                             <input type="number" placeholder="0.00" className="w-32 border border-gray-300 rounded-lg p-2 text-center font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-500" value={answer || ''} onChange={(e) => handleAnswer(item.id, e.target.value)} />
+                             <input type="number" placeholder="0.00" className="w-32 border border-gray-300 rounded-lg p-2 text-center font-bold text-lg outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white" value={answer || ''} onChange={(e) => handleAnswer(item.id, e.target.value)} />
                           </div>
                         )}
 

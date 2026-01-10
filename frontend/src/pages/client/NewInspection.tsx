@@ -57,7 +57,7 @@ export default function NewInspection() {
     if (!selectedTemplate || !siteName) return;
     
     // אם המשתמש הוא לקוח, הלקוח הוא הארגון שלו. אם הוא אדמין, הוא בחר לקוח.
-    const targetClient = user?.role === 'client_user' ? { id: user.id, name: user.firstName } : selectedClient; // פשטנו לצורך הדוגמה
+    const targetClient = user?.role === 'client_user' ? { id: user.id, name: user.firstName } : selectedClient;
 
     if (!targetClient && user?.role !== 'client_user') {
       alert('נא לבחור לקוח');
@@ -74,13 +74,13 @@ export default function NewInspection() {
         siteName: siteName,
         templateId: selectedTemplate.id,
         templateName: selectedTemplate.title,
-        templateSnapshot: selectedTemplate.sections, // שומרים עותק של השאלות כמו שהן היום!
-        inspectorId: user?.id,
-        inspectorName: user?.firstName + ' ' + (user?.lastName || ''),
+        templateSnapshot: selectedTemplate.sections || [],
+        inspectorId: user?.id || user?.uid || 'anonymous',  // ✅ תיקון: fallback למניעת undefined
+        inspectorName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Unknown Inspector',
         status: 'in_progress',
         progress: 0,
         score: 0,
-        answers: {}, // כאן יישמרו התשובות
+        answers: {},
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       };
@@ -97,7 +97,7 @@ export default function NewInspection() {
     }
   };
 
-  if (loading) return <div className="p-10 text-center">טוען נתונים...</div>;
+  if (loading) return <div className="p-10 text-center text-gray-900">טוען נתונים...</div>;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -119,7 +119,7 @@ export default function NewInspection() {
       {/* Step 1: Select Client (Only for Admin) */}
       {step === 1 && (
         <div className="space-y-6 animate-fadeIn">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-900">
             <BuildingOfficeIcon className="h-6 w-6 text-indigo-600" />
             בחר לקוח / ארגון
           </h2>
@@ -129,7 +129,7 @@ export default function NewInspection() {
               <div 
                 key={client.id}
                 onClick={() => { setSelectedClient(client); setStep(2); }}
-                className="p-4 border rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center gap-3"
+                className="p-4 border rounded-xl cursor-pointer hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center gap-3 bg-white"
               >
                 <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-600">
                   {client.name[0]}
@@ -143,7 +143,7 @@ export default function NewInspection() {
             
             {clients.length === 0 && (
               <div className="col-span-2 text-center py-10 bg-gray-50 rounded-xl">
-                <p>לא נמצאו לקוחות. יש להקים לקוח במערכת הניהול.</p>
+                <p className="text-gray-700">לא נמצאו לקוחות. יש להקים לקוח במערכת הניהול.</p>
               </div>
             )}
           </div>
@@ -154,7 +154,7 @@ export default function NewInspection() {
       {step === 2 && (
         <div className="space-y-6 animate-fadeIn">
           <div className="flex justify-between items-center">
-             <h2 className="text-xl font-semibold flex items-center gap-2">
+             <h2 className="text-xl font-semibold flex items-center gap-2 text-gray-900">
               <DocumentTextIcon className="h-6 w-6 text-indigo-600" />
               בחר סוג בדיקה (תבנית)
             </h2>
@@ -169,11 +169,11 @@ export default function NewInspection() {
                 className="p-5 border rounded-xl cursor-pointer hover:shadow-md hover:border-indigo-500 transition-all bg-white group"
               >
                 <div className="flex justify-between items-start mb-2">
-                  <span className={`px-2 py-1 text-xs rounded-full ${template.category === 'safety' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`}>
+                  <span className={`px-2 py-1 text-xs rounded-full ${template.category === 'safety' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
                     {template.category}
                   </span>
                 </div>
-                <h3 className="font-bold text-lg mb-1">{template.title}</h3>
+                <h3 className="font-bold text-lg mb-1 text-gray-900">{template.title}</h3>
                 <p className="text-sm text-gray-500 mb-4">{template.description || 'ללא תיאור'}</p>
                 <div className="text-xs text-indigo-600 font-medium group-hover:underline">בחר תבנית זו &larr;</div>
               </div>
@@ -187,19 +187,19 @@ export default function NewInspection() {
         <div className="space-y-6 animate-fadeIn max-w-lg mx-auto">
           <div className="text-center mb-6">
             <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold">כמעט מוכנים!</h2>
+            <h2 className="text-2xl font-bold text-gray-900">כמעט מוכנים!</h2>
             <p className="text-gray-500">אנא אמת את הפרטים לפני תחילת הבדיקה</p>
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-gray-200 space-y-4 shadow-sm">
             <div>
               <label className="text-sm text-gray-500 block mb-1">לקוח נבחר</label>
-              <div className="font-medium text-lg">{selectedClient.name}</div>
+              <div className="font-medium text-lg text-gray-900">{selectedClient.name}</div>
             </div>
             
             <div>
               <label className="text-sm text-gray-500 block mb-1">סוג בדיקה</label>
-              <div className="font-medium text-lg">{selectedTemplate.title}</div>
+              <div className="font-medium text-lg text-gray-900">{selectedTemplate.title}</div>
             </div>
 
             <div>
@@ -208,7 +208,7 @@ export default function NewInspection() {
                 type="text" 
                 autoFocus
                 placeholder="למשל: בניין ראשי, קומה 2"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 bg-white"
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
               />
@@ -218,7 +218,7 @@ export default function NewInspection() {
           <div className="flex gap-4 pt-4">
             <button 
               onClick={() => setStep(2)}
-              className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+              className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium bg-white"
             >
               חזרה
             </button>

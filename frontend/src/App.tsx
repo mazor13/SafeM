@@ -56,6 +56,11 @@ import ClientFindings from './pages/client-dashboard/ClientFindings';
 import ClientDocuments from './pages/client-dashboard/ClientDocuments';
 import ClientFacilities from './pages/client-dashboard/ClientFacilities';
 
+// Inspector/Client Pages (Inspections)
+import Inspections from './pages/client/Inspections';
+import NewInspection from './pages/client/NewInspection';
+import InspectionDetails from './pages/client/InspectionDetails';
+
 function App() {
   return (
     <AuthProvider>
@@ -66,6 +71,23 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        
+        {/* Inspector Routes - For inspection execution */}
+        <Route path="/client" element={
+          <ProtectedRoute>
+            <Inspections />
+          </ProtectedRoute>
+        } />
+        <Route path="/client/new-inspection" element={
+          <ProtectedRoute>
+            <NewInspection />
+          </ProtectedRoute>
+        } />
+        <Route path="/client/inspections/:id" element={
+          <ProtectedRoute>
+            <InspectionDetails />
+          </ProtectedRoute>
+        } />
         
         {/* Client Portal Routes - Protected for authenticated users */}
         <Route path="/portal/:clientId" element={
