@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Box } from 'lucide-react';
+import { Plus, Upload, Box, Download, Loader2 } from 'lucide-react';
 import { EquipmentList, EquipmentListStyles, useEquipment, Equipment } from '../../../phase4-equipment';
 import { ExcelImport } from '../../../components/import';
+import { exportEquipmentList } from '../../../phase5-reports/services/ExcelExport';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore } from '../../../firebase';
 import { useAuth } from '../../../providers/AuthProvider';
@@ -23,12 +24,30 @@ export default function EquipmentPage() {
   const { user } = useAuth();
   const { equipment, loading, error, stats, deleteEquipment, refresh } = useEquipment({ realtime: true });
   const [showImport, setShowImport] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const handleSelect = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
   const handleEdit = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
+  
   const handleDelete = async (eq: Equipment) => {
     if (window.confirm(`האם למחוק את "${eq.name}"?`)) {
       await deleteEquipment(eq.id);
+    }
+  };
+
+  const handleExport = async () => {
+    if (equipment.length === 0) {
+      alert('אין ציוד לייצוא');
+      return;
+    }
+    setExporting(true);
+    try {
+      exportEquipmentList(equipment);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('שגיאה בייצוא');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -40,7 +59,6 @@ export default function EquipmentPage() {
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
       try {
-        // Parse dates if provided
         let purchaseDate = null;
         let nextInspectionDate = null;
         
@@ -77,11 +95,9 @@ export default function EquipmentPage() {
       }
     }
 
-    // Refresh the list after import
     if (success > 0 && refresh) {
       refresh();
     }
-
     return { success, failed, errors };
   };
 
@@ -101,6 +117,18 @@ export default function EquipmentPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExport}
+            disabled={exporting || equipment.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Download size={18} />
+            )}
+            {exporting ? 'מייצא...' : 'ייצא לאקסל'}
+          </button>
           <button
             onClick={() => setShowImport(true)}
             className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
