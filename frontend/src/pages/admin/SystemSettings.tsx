@@ -147,65 +147,61 @@ export default function SystemSettings() {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-xl shadow-sm border p-6">
+      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
         {/* General Tab */}
         {activeTab === 'general' && localConfig && (
           <div className="space-y-6">
             <h3 className="text-lg font-semibold mb-4">הגדרות כלליות</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* שם המערכת */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  שם המערכת
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">שם המערכת</label>
                 <input
                   type="text"
                   value={localConfig.systemName || ''}
                   onChange={(e) => handleConfigChange('root', 'systemName', e.target.value)}
-                  className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
                 />
               </div>
               
+              {/* אימייל תמיכה */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  אימייל תמיכה
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">אימייל תמיכה</label>
                 <input
                   type="email"
                   value={localConfig.supportEmail || ''}
                   onChange={(e) => handleConfigChange('root', 'supportEmail', e.target.value)}
-                  className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
                 />
               </div>
               
+              {/* צבע ראשי - מעוצב מחדש כתיבה אחת */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  צבע ראשי
-                </label>
-                <div className="flex gap-2">
+                <label className="block text-sm font-bold text-gray-700 mb-2">צבע ראשי</label>
+                <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 focus-within:ring-2 focus-within:ring-blue-500 transition-all duration-200">
                   <input
                     type="color"
                     value={localConfig.branding?.primaryColor || '#4F46E5'}
                     onChange={(e) => handleConfigChange('branding', 'primaryColor', e.target.value)}
-                    className="w-12 h-10 border rounded cursor-pointer"
+                    className="w-12 h-10 border-none cursor-pointer bg-transparent"
                   />
                   <input
                     type="text"
                     value={localConfig.branding?.primaryColor || '#4F46E5'}
                     onChange={(e) => handleConfigChange('branding', 'primaryColor', e.target.value)}
-                    className="flex-1 border rounded-lg px-4 py-2"
+                    className="flex-1 px-4 py-2 text-left font-mono border-l border-gray-200 outline-none bg-gray-50"
                   />
                 </div>
               </div>
               
+              {/* אזור ברירת מחדל */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  אזור ברירת מחדל
-                </label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">אזור ברירת מחדל</label>
                 <select
                   value={localConfig.infrastructure?.defaultRegion || 'me-west1'}
                   onChange={(e) => handleConfigChange('infrastructure', 'defaultRegion', e.target.value)}
-                  className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 cursor-pointer"
                 >
                   <option value="me-west1">ישראל (me-west1)</option>
                   <option value="europe-west1">אירופה (europe-west1)</option>
@@ -213,7 +209,6 @@ export default function SystemSettings() {
                 </select>
               </div>
             </div>
-
             <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
               <input
                 type="checkbox"
@@ -287,7 +282,7 @@ export default function SystemSettings() {
                   value={localConfig.ai?.provider || 'anthropic'}
                   onChange={(e) => handleConfigChange('ai', 'provider', e.target.value)}
                   disabled={!localConfig.ai?.enabled}
-                  className="w-full border rounded-lg px-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="anthropic">Anthropic (Claude)</option>
                   <option value="openai">OpenAI (GPT)</option>
@@ -302,7 +297,7 @@ export default function SystemSettings() {
                   value={localConfig.ai?.model || 'claude-3-sonnet'}
                   onChange={(e) => handleConfigChange('ai', 'model', e.target.value)}
                   disabled={!localConfig.ai?.enabled}
-                  className="w-full border rounded-lg px-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   {localConfig.ai?.provider === 'anthropic' ? (
                     <>
@@ -330,7 +325,7 @@ export default function SystemSettings() {
                   disabled={!localConfig.ai?.enabled}
                   min={100}
                   max={8000}
-                  className="w-full border rounded-lg px-4 py-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-900 bg-white shadow-sm ring-1 ring-gray-100 hover:ring-gray-300 hover:border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
