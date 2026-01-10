@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Box, Download, Loader2 } from 'lucide-react';
+import { Plus, Upload, Box, Download, Loader2, Bell } from 'lucide-react';
 import { EquipmentList, EquipmentListStyles, useEquipment, Equipment } from '../../../phase4-equipment';
 import { ExcelImport } from '../../../components/import';
 import { exportEquipmentList } from '../../../phase5-reports/services/ExcelExport';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { firestore } from '../../../firebase';
+import { firestore, functions } from '../../../firebase';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../../../providers/AuthProvider';
 
 const EQUIPMENT_COLUMNS = [
@@ -25,6 +26,7 @@ export default function EquipmentPage() {
   const { equipment, loading, error, stats, deleteEquipment, refresh } = useEquipment({ realtime: true });
   const [showImport, setShowImport] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [sendingReminders, setSendingReminders] = useState(false);
 
   const handleSelect = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
   const handleEdit = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
@@ -48,6 +50,35 @@ export default function EquipmentPage() {
       alert('שגיאה בייצוא');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleTestReminders = async () => {
+    if (!user?.tenantId) {
+      alert('לא נמצא מזהה טננט');
+      return;
+    }
+
+    setSendingReminders(true);
+    try {
+      const triggerReminders = httpsCallable(functions, 'triggerRemindersManually');
+      const result = await triggerReminders({
+        tenantId: user.tenantId,
+        testEmail: user.email // שלח למייל המשתמש הנוכחי לבדיקה
+      });
+      
+      const data = result.data as any;
+      if (data.success) {
+        const sentCount = data.results?.filter((r: any) => r.sent).length || 0;
+        alert(`✅ נשלחו ${sentCount} תזכורות ל-${data.emailTo}\n\nציוד עם בדיקות ב-30 הימים הקרובים:\n${data.results?.map((r: any) => `• ${r.equipment} (${r.daysUntil} ימים)`).join('\n') || 'אין'}`);
+      } else {
+        alert('לא נשלחו תזכורות');
+      }
+    } catch (err: any) {
+      console.error('Reminder error:', err);
+      alert('שגיאה בשליחת תזכורות: ' + (err.message || err));
+    } finally {
+      setSendingReminders(false);
     }
   };
 
@@ -98,6 +129,7 @@ export default function EquipmentPage() {
     if (success > 0 && refresh) {
       refresh();
     }
+
     return { success, failed, errors };
   };
 
@@ -117,6 +149,19 @@ export default function EquipmentPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleTestReminders}
+            disabled={sendingReminders}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="שלח תזכורות לציוד עם בדיקות קרובות"
+          >
+            {sendingReminders ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Bell size={18} />
+            )}
+            {sendingReminders ? 'שולח...' : 'בדוק תזכורות'}
+          </button>
           <button
             onClick={handleExport}
             disabled={exporting || equipment.length === 0}

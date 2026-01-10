@@ -569,3 +569,371 @@ function buildEmailHTML(type: string, data: any): string {
       `;
   }
 }
+
+// =====================================================
+// 7. Automatic Reminders (Scheduled Function)
+// =====================================================
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import * as admin from "firebase-admin";
+
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
+
+interface Equipment {
+  id: string;
+  name: string;
+  type: string;
+  nextInspection: admin.firestore.Timestamp | null;
+  clientId: string;
+  siteId?: string;
+  serialNumber?: string;
+}
+
+interface ReminderLog {
+  equipmentId: string;
+  equipmentName: string;
+  clientId: string;
+  tenantId: string;
+  daysUntilDue: number;
+  sentAt: admin.firestore.Timestamp;
+  emailTo: string;
+  success: boolean;
+  error?: string;
+}
+
+// Run every day at 8:00 AM Israel time
+export const sendDailyReminders = onSchedule(
+  {
+    schedule: "0 8 * * *",
+    timeZone: "Asia/Jerusalem",
+    region: "us-central1",
+    secrets: [gmailUser, gmailPassword]
+  },
+  async (event) => {
+    console.log("Starting daily reminders job...");
+    
+    const now = new Date();
+    const remindDays = [7, 3, 1]; // Send reminders 7, 3, and 1 days before
+    const results: { sent: number; failed: number; skipped: number } = { sent: 0, failed: 0, skipped: 0 };
+
+    try {
+      // Get all tenants
+      const tenantsSnapshot = await db.collection("tenants").get();
+      
+      for (const tenantDoc of tenantsSnapshot.docs) {
+        const tenantId = tenantDoc.id;
+        const tenantData = tenantDoc.data();
+        const tenantEmail = tenantData.email || tenantData.ownerEmail;
+        
+        if (!tenantEmail) {
+          console.log(`Tenant ${tenantId} has no email, skipping`);
+          continue;
+        }
+
+        // Get all equipment for this tenant
+        const equipmentSnapshot = await db
+          .collection("tenants")
+          .doc(tenantId)
+          .collection("equipment")
+          .where("nextInspection", "!=", null)
+          .get();
+
+        for (const equipDoc of equipmentSnapshot.docs) {
+          const equipment = { id: equipDoc.id, ...equipDoc.data() } as Equipment;
+          
+          if (!equipment.nextInspection) continue;
+
+          const nextInspectionDate = equipment.nextInspection.toDate();
+          const daysUntil = Math.ceil((nextInspectionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          // Check if we should send a reminder for this day
+          if (remindDays.includes(daysUntil)) {
+            // Check if we already sent a reminder for this equipment today
+            const existingReminder = await db
+              .collection("tenants")
+              .doc(tenantId)
+              .collection("reminderLogs")
+              .where("equipmentId", "==", equipment.id)
+              .where("daysUntilDue", "==", daysUntil)
+              .where("sentAt", ">=", admin.firestore.Timestamp.fromDate(
+                new Date(now.getFullYear(), now.getMonth(), now.getDate())
+              ))
+              .get();
+
+            if (!existingReminder.empty) {
+              console.log(`Already sent ${daysUntil}-day reminder for ${equipment.name}`);
+              results.skipped++;
+              continue;
+            }
+
+            // Get client name
+            let clientName = "לקוח";
+            if (equipment.clientId) {
+              const clientDoc = await db
+                .collection("tenants")
+                .doc(tenantId)
+                .collection("clients")
+                .doc(equipment.clientId)
+                .get();
+              if (clientDoc.exists) {
+                clientName = clientDoc.data()?.name || "לקוח";
+              }
+            }
+
+            // Send the reminder email
+            try {
+              const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                  user: gmailUser.value(),
+                  pass: gmailPassword.value()
+                }
+              });
+
+              const urgencyText = daysUntil === 1 ? "⚠️ מחר!" : daysUntil === 3 ? "בעוד 3 ימים" : "בעוד שבוע";
+              const subject = `תזכורת: בדיקה קרובה לציוד "${equipment.name}" - ${urgencyText}`;
+
+              const htmlContent = buildReminderHTML({
+                equipmentName: equipment.name,
+                equipmentType: equipment.type || "לא צוין",
+                serialNumber: equipment.serialNumber || "לא צוין",
+                clientName,
+                dueDate: nextInspectionDate.toLocaleDateString("he-IL"),
+                daysUntil,
+                urgencyText
+              });
+
+              await transporter.sendMail({
+                from: '"AEGIS Safety" <' + gmailUser.value() + '>',
+                to: tenantEmail,
+                subject,
+                html: htmlContent
+              });
+
+              // Log the reminder
+              const reminderLog: ReminderLog = {
+                equipmentId: equipment.id,
+                equipmentName: equipment.name,
+                clientId: equipment.clientId,
+                tenantId,
+                daysUntilDue: daysUntil,
+                sentAt: admin.firestore.Timestamp.now(),
+                emailTo: tenantEmail,
+                success: true
+              };
+
+              await db
+                .collection("tenants")
+                .doc(tenantId)
+                .collection("reminderLogs")
+                .add(reminderLog);
+
+              console.log(`Sent ${daysUntil}-day reminder for ${equipment.name} to ${tenantEmail}`);
+              results.sent++;
+
+            } catch (emailError) {
+              console.error(`Failed to send reminder for ${equipment.name}:`, emailError);
+              
+              // Log the failure
+              await db
+                .collection("tenants")
+                .doc(tenantId)
+                .collection("reminderLogs")
+                .add({
+                  equipmentId: equipment.id,
+                  equipmentName: equipment.name,
+                  clientId: equipment.clientId,
+                  tenantId,
+                  daysUntilDue: daysUntil,
+                  sentAt: admin.firestore.Timestamp.now(),
+                  emailTo: tenantEmail,
+                  success: false,
+                  error: String(emailError)
+                });
+
+              results.failed++;
+            }
+          }
+        }
+      }
+
+      console.log(`Daily reminders completed: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`);
+      
+    } catch (error) {
+      console.error("Daily reminders job failed:", error);
+      throw error;
+    }
+  }
+);
+
+function buildReminderHTML(data: {
+  equipmentName: string;
+  equipmentType: string;
+  serialNumber: string;
+  clientName: string;
+  dueDate: string;
+  daysUntil: number;
+  urgencyText: string;
+}): string {
+  const urgencyColor = data.daysUntil === 1 ? "#dc2626" : data.daysUntil === 3 ? "#f59e0b" : "#3b82f6";
+  
+  return `
+    <!DOCTYPE html>
+    <html dir="rtl" lang="he">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap');
+        body { font-family: 'Heebo', Arial, sans-serif; direction: rtl; margin: 0; padding: 0; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, ${urgencyColor} 0%, ${urgencyColor}dd 100%); color: white; padding: 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .urgency-badge { display: inline-block; background: white; color: ${urgencyColor}; padding: 8px 16px; border-radius: 20px; font-weight: 700; margin-top: 15px; font-size: 18px; }
+        .content { padding: 30px; }
+        .info-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin: 15px 0; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .info-row:last-child { border-bottom: none; }
+        .label { color: #6b7280; }
+        .value { font-weight: 600; color: #111827; }
+        .footer { background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+        .highlight { color: ${urgencyColor}; font-weight: 700; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>⏰ תזכורת לבדיקה קרובה</h1>
+          <div class="urgency-badge">${data.urgencyText}</div>
+        </div>
+        <div class="content">
+          <p>שלום,</p>
+          <p>זוהי תזכורת כי יש לבצע בדיקה לציוד הבא בקרוב:</p>
+          <div class="info-box">
+            <div class="info-row"><span class="label">שם הציוד:</span><span class="value">${data.equipmentName}</span></div>
+            <div class="info-row"><span class="label">סוג:</span><span class="value">${data.equipmentType}</span></div>
+            <div class="info-row"><span class="label">מס' סידורי:</span><span class="value">${data.serialNumber}</span></div>
+            <div class="info-row"><span class="label">לקוח:</span><span class="value">${data.clientName}</span></div>
+            <div class="info-row"><span class="label">תאריך בדיקה:</span><span class="value highlight">${data.dueDate}</span></div>
+          </div>
+          <p>אנא ודא שהבדיקה מתוזמנת ושכל ההכנות בוצעו.</p>
+        </div>
+        <div class="footer">
+          <p>הודעה זו נשלחה אוטומטית ממערכת AEGIS Safety</p>
+          <p>ניתן לשנות את הגדרות התזכורות בהגדרות המערכת</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+// Manual trigger for testing reminders
+export const triggerRemindersManually = onCall(
+  {
+    cors: true,
+    region: "us-central1",
+    secrets: [gmailUser, gmailPassword]
+  },
+  async (request) => {
+    console.log("Manual reminder trigger started...");
+    
+    const { tenantId, testEmail } = request.data;
+    
+    if (!tenantId) {
+      throw new HttpsError("invalid-argument", "Missing tenantId");
+    }
+
+    const now = new Date();
+    const results: { equipment: string; daysUntil: number; sent: boolean; error?: string }[] = [];
+
+    try {
+      // Get equipment for this tenant
+      const equipmentSnapshot = await db
+        .collection("tenants")
+        .doc(tenantId)
+        .collection("equipment")
+        .where("nextInspection", "!=", null)
+        .get();
+
+      const tenantDoc = await db.collection("tenants").doc(tenantId).get();
+      const tenantEmail = testEmail || tenantDoc.data()?.email || tenantDoc.data()?.ownerEmail;
+
+      if (!tenantEmail) {
+        throw new HttpsError("failed-precondition", "No email configured for tenant");
+      }
+
+      for (const equipDoc of equipmentSnapshot.docs) {
+        const equipment = { id: equipDoc.id, ...equipDoc.data() } as Equipment;
+        
+        if (!equipment.nextInspection) continue;
+
+        const nextInspectionDate = equipment.nextInspection.toDate();
+        const daysUntil = Math.ceil((nextInspectionDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        // For testing, include if within 30 days or if daysOverride matches
+        if (daysUntil > 0 && daysUntil <= 30) {
+          let clientName = "לקוח";
+          if (equipment.clientId) {
+            const clientDoc = await db
+              .collection("tenants")
+              .doc(tenantId)
+              .collection("clients")
+              .doc(equipment.clientId)
+              .get();
+            if (clientDoc.exists) {
+              clientName = clientDoc.data()?.name || "לקוח";
+            }
+          }
+
+          try {
+            const transporter = nodemailer.createTransport({
+              service: "gmail",
+              auth: {
+                user: gmailUser.value(),
+                pass: gmailPassword.value()
+              }
+            });
+
+            const urgencyText = daysUntil === 1 ? "⚠️ מחר!" : daysUntil <= 3 ? `בעוד ${daysUntil} ימים` : `בעוד ${daysUntil} ימים`;
+            const subject = `[TEST] תזכורת: בדיקה קרובה לציוד "${equipment.name}" - ${urgencyText}`;
+
+            const htmlContent = buildReminderHTML({
+              equipmentName: equipment.name,
+              equipmentType: equipment.type || "לא צוין",
+              serialNumber: equipment.serialNumber || "לא צוין",
+              clientName,
+              dueDate: nextInspectionDate.toLocaleDateString("he-IL"),
+              daysUntil,
+              urgencyText
+            });
+
+            await transporter.sendMail({
+              from: '"AEGIS Safety" <' + gmailUser.value() + '>',
+              to: tenantEmail,
+              subject,
+              html: htmlContent
+            });
+
+            results.push({ equipment: equipment.name, daysUntil, sent: true });
+          } catch (err) {
+            results.push({ equipment: equipment.name, daysUntil, sent: false, error: String(err) });
+          }
+        }
+      }
+
+      return {
+        success: true,
+        emailTo: tenantEmail,
+        results
+      };
+
+    } catch (error) {
+      console.error("Manual reminder trigger failed:", error);
+      throw new HttpsError("internal", "Failed to trigger reminders: " + error);
+    }
+  }
+);
