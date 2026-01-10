@@ -147,6 +147,7 @@ export default function AdminLayout() {
     { name: 'פיננסים', to: '/admin/finance', icon: CreditCard },
     { name: 'מוצרים', to: '/admin/products', icon: Package },
     { name: 'מיתוג', to: '/admin/branding', icon: Palette },
+    { name: 'אוטומציות', to: '/admin/automation', icon: Zap },
     { name: 'הגדרות', to: '/admin/settings', icon: Settings },
   ];
 
