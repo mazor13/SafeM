@@ -14,7 +14,7 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../providers/AuthProvider';
 import { useGlobalConfig } from '../../hooks/useGlobalConfig';
 import { useAuditLog, formatAuditTimestamp, formatAuditLogMessage } from '../../hooks/useAuditLog';
 import { useSystemStats } from '../../hooks/useSystemStats';
@@ -34,7 +34,7 @@ interface TabProps {
 // ===========================================
 
 export default function SystemSettings() {
-  const { currentUser } = useAuth();
+  const { user } = useAuth();
   const { config, updateConfig, loading: configLoading, saving, error: configError } = useGlobalConfig();
   const { logs, loading: logsLoading } = useAuditLog({ pageSize: 50, realtime: true });
   const { stats, loading: statsLoading } = useSystemStats();
@@ -60,7 +60,7 @@ export default function SystemSettings() {
   const handleSave = async () => {
     if (!localConfig) return;
     
-    const result = await updateConfig(localConfig, currentUser?.uid);
+    const result = await updateConfig(localConfig, user?.uid);
     
     if (result.success) {
       setSaveSuccess(true);

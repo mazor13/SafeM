@@ -46,6 +46,14 @@ import PendingApprovals from './pages/admin/PendingApprovals';
 import AnalyticsPage from './pages/admin/reports/AnalyticsPage';
 import InspectionHistoryPage from './pages/admin/reports/InspectionHistoryPage';
 import CompliancePage from './pages/admin/reports/CompliancePage';
+// Orphan Files Integration - Sprint 7
+import SystemSettings from './pages/admin/SystemSettings';
+import InfrastructureSettings from './pages/admin/InfrastructureSettings';
+import ClientSettings from './pages/admin/ClientSettings';
+import BrandingSettings from './pages/admin/BrandingSettings';
+import CloudHub from './pages/admin/CloudHub';
+import RuleBuilder from './pages/admin/RuleBuilder';
+
 
 // Client Portal Pages
 import ClientDashboardLayout from './pages/client-dashboard/ClientDashboardLayout';
@@ -163,7 +171,15 @@ function App() {
           <Route path="templates/new" element={<TemplateDesigner />} />
           <Route path="/admin/templates/:templateId/preview" element={<TemplatePreview />} />
           
-          <Route path="settings" element={<div className="p-10 text-slate-400">System Settings (Coming Soon)</div>} />
+          
+          {/* Sprint 7 - Integrated Orphan Pages */}
+          <Route path="branding" element={<BrandingSettings />} />
+          <Route path="cloud-hub" element={<CloudHub />} />
+          <Route path="automation" element={<RuleBuilder />} />
+          <Route path="tenant/:tenantId/infrastructure" element={<InfrastructureSettings />} />
+          <Route path="tenant/:tenantId/features" element={<ClientSettings />} />
+          
+          <Route path="settings" element={<SystemSettings />} />
           <Route path="products" element={<ProductManagement />} />
         </Route>
 

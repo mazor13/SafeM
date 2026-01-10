@@ -87,7 +87,7 @@ export function useEquipment(options: UseEquipmentOptions = {}): UseEquipmentRet
     }
     
     // Always filter out deleted
-    constraints.push(where('isDeleted', '!=', true));
+    constraints.push(where('isDeleted', '==', false));
     
     // Order by name
     constraints.push(orderBy('name'));
@@ -254,7 +254,7 @@ export function useLocations(options: UseLocationsOptions = {}): UseLocationsRet
 
     const constraints: QueryConstraint[] = [
       where('clientId', '==', clientId),
-      where('isDeleted', '!=', true),
+      where('isDeleted', '==', false),
       orderBy('name'),
     ];
 
