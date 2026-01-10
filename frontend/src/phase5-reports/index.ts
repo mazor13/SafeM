@@ -15,7 +15,6 @@ export {
   downloadPDF,
   generateReportFilename,
 } from './components/PDFReportGenerator';
-
 export type {
   ReportData,
   ReportSection,
@@ -29,7 +28,6 @@ export {
   InspectionHistory, 
   InspectionHistoryStyles,
 } from './components/InspectionHistory';
-
 export type {
   InspectionHistoryItem,
   HistoryFilters,
@@ -41,7 +39,6 @@ export {
   AnalyticsDashboard, 
   AnalyticsDashboardStyles,
 } from './components/AnalyticsDashboard';
-
 export type {
   AnalyticsData,
   DateRange,
@@ -52,7 +49,6 @@ export {
   ClientPortal,
   ClientPortalStyles,
 } from './components/ClientPortal';
-
 export type {
   ClientPortalData,
   ClientEquipment,
@@ -67,22 +63,15 @@ export {
   exportToExcel,
   exportMultiSheet,
   exportEquipmentList,
-  exportInspectionHistory,
+  exportInspectionsList,
   exportFindingsList,
   exportClientsList,
-  exportSchedule,
-  exportComplianceReport,
-  exportFullReport,
   ExportButton,
-  ExcelExportStyles,
   EXPORT_CONFIGS,
 } from './services/ExcelExport';
-
 export type {
   ExportColumn,
   ExportOptions,
-  MultiSheetExport,
-  FullReportData,
 } from './services/ExcelExport';
 
 // Compliance Report
@@ -90,7 +79,6 @@ export {
   ComplianceReport,
   ComplianceReportStyles,
 } from './components/ComplianceReport';
-
 export type {
   ComplianceReportData,
   DomainCompliance,

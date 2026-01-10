@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Mail, Loader2 } from 'lucide-react';
+import { AlertTriangle, Mail, Loader2, Download } from 'lucide-react';
 import { useFindings, FindingStatus } from '../../../phase4-equipment';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import { exportFindingsList } from '../../../phase5-reports/services/ExcelExport';
 
 export default function FindingsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const { findings, loading, error, stats, updateStatus } = useFindings({ realtime: true });
 
   const filteredFindings = filterStatus === 'all' 
@@ -64,6 +66,22 @@ export default function FindingsPage() {
     }
   };
 
+  const handleExport = async () => {
+    if (filteredFindings.length === 0) {
+      alert('אין ממצאים לייצוא');
+      return;
+    }
+    setExporting(true);
+    try {
+      exportFindingsList(filteredFindings);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('שגיאה בייצוא');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="p-6" dir="rtl">
       <div className="flex items-center justify-between mb-6">
@@ -99,7 +117,7 @@ export default function FindingsPage() {
         </div>
       </div>
 
-      <div className="bg-slate-800/50 rounded-xl p-4 mb-6">
+      <div className="bg-slate-800/50 rounded-xl p-4 mb-6 flex items-center justify-between">
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -111,10 +129,23 @@ export default function FindingsPage() {
           <option value="resolved">טופל</option>
           <option value="closed">סגור</option>
         </select>
+
+        <button
+          onClick={handleExport}
+          disabled={exporting || filteredFindings.length === 0}
+          className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/30 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {exporting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          {exporting ? 'מייצא...' : 'ייצא לאקסל'}
+        </button>
       </div>
 
       {error && <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-4 mb-6 text-rose-400">{error.message}</div>}
-
+      
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full"></div>
