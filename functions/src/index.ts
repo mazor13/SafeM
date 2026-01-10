@@ -3,6 +3,11 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 
+import * as nodemailer from "nodemailer";
+import { defineSecret } from "firebase-functions/params";
+
+const gmailUser = defineSecret("GMAIL_USER");
+const gmailPassword = defineSecret("GMAIL_APP_PASSWORD");
 // =====================================================
 // 1. Google Auth URL Generator
 // =====================================================
@@ -355,4 +360,212 @@ function buildInspectionHTML(inspection: any): string {
     '<div class="footer">מסמך זה נוצר אוטומטית ע"י מערכת SafeM | ' + date + ' ' + time + '</div>' +
     '</body>' +
     '</html>';
+}
+
+// =====================================================
+// 6. Send Email Notification
+// =====================================================
+
+
+export const sendEmailNotification = onCall(
+  { 
+    cors: true, 
+    region: "us-central1",
+    secrets: [gmailUser, gmailPassword]
+  },
+  async (request) => {
+    const { to, subject, type, data } = request.data;
+
+    if (!to || !subject || !type) {
+      throw new HttpsError("invalid-argument", "Missing required fields: to, subject, type");
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: gmailUser.value(),
+          pass: gmailPassword.value()
+        }
+      });
+
+      const htmlContent = buildEmailHTML(type, data);
+
+      const mailOptions = {
+        from: '"AEGIS Safety" <' + gmailUser.value() + '>',
+        to,
+        subject,
+        html: htmlContent
+      };
+
+      await transporter.sendMail(mailOptions);
+
+      return { 
+        success: true, 
+        message: "Email sent successfully to " + to 
+      };
+
+    } catch (error) {
+      console.error("Email send error:", error);
+      throw new HttpsError("internal", "Failed to send email: " + error);
+    }
+  }
+);
+
+function buildEmailHTML(type: string, data: any): string {
+  const baseStyle = `
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&display=swap');
+      body { font-family: 'Heebo', Arial, sans-serif; direction: rtl; margin: 0; padding: 0; background: #f5f5f5; }
+      .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+      .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 24px; }
+      .content { padding: 30px; }
+      .info-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin: 15px 0; }
+      .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+      .info-row:last-child { border-bottom: none; }
+      .label { color: #6b7280; }
+      .value { font-weight: 600; color: #111827; }
+      .btn { display: inline-block; background: #4f46e5; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+      .footer { background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+      .status-pass { color: #059669; font-weight: 600; }
+      .status-fail { color: #dc2626; font-weight: 600; }
+    </style>
+  `;
+
+  switch (type) {
+    case "finding_created":
+      return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head><meta charset="UTF-8">${baseStyle}</head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔍 ממצא חדש נוצר</h1>
+            </div>
+            <div class="content">
+              <p>שלום,</p>
+              <p>ממצא חדש נוצר במערכת AEGIS:</p>
+              <div class="info-box">
+                <div class="info-row"><span class="label">כותרת:</span><span class="value">${data.title || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">חומרה:</span><span class="value ${data.severity === "critical" ? "status-fail" : ""}">${data.severityText || data.severity || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">לקוח:</span><span class="value">${data.clientName || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">אתר:</span><span class="value">${data.siteName || "לא צוין"}</span></div>
+              </div>
+              <p>${data.description || ""}</p>
+            </div>
+            <div class="footer">
+              <p>הודעה זו נשלחה אוטומטית ממערכת AEGIS Safety</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+    case "inspection_complete":
+      return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head><meta charset="UTF-8">${baseStyle}</head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✅ בדיקה הושלמה</h1>
+            </div>
+            <div class="content">
+              <p>שלום,</p>
+              <p>בדיקה הושלמה בהצלחה:</p>
+              <div class="info-box">
+                <div class="info-row"><span class="label">סוג בדיקה:</span><span class="value">${data.templateName || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">לקוח:</span><span class="value">${data.clientName || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">אתר:</span><span class="value">${data.siteName || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">ציון:</span><span class="value ${data.score >= 80 ? "status-pass" : "status-fail"}">${data.score || 0}%</span></div>
+                <div class="info-row"><span class="label">תקין:</span><span class="value status-pass">${data.passCount || 0}</span></div>
+                <div class="info-row"><span class="label">לקוי:</span><span class="value status-fail">${data.failCount || 0}</span></div>
+              </div>
+            </div>
+            <div class="footer">
+              <p>הודעה זו נשלחה אוטומטית ממערכת AEGIS Safety</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+    case "task_assigned":
+      return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head><meta charset="UTF-8">${baseStyle}</head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📋 משימה חדשה הוקצתה לך</h1>
+            </div>
+            <div class="content">
+              <p>שלום ${data.assigneeName || ""},</p>
+              <p>משימה חדשה הוקצתה לך:</p>
+              <div class="info-box">
+                <div class="info-row"><span class="label">משימה:</span><span class="value">${data.taskTitle || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">תאריך יעד:</span><span class="value">${data.dueDate || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">עדיפות:</span><span class="value">${data.priority || "רגילה"}</span></div>
+              </div>
+              <p>${data.description || ""}</p>
+            </div>
+            <div class="footer">
+              <p>הודעה זו נשלחה אוטומטית ממערכת AEGIS Safety</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+    case "reminder":
+      return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head><meta charset="UTF-8">${baseStyle}</head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>⏰ תזכורת</h1>
+            </div>
+            <div class="content">
+              <p>שלום,</p>
+              <p>${data.message || "יש לך פריטים הדורשים טיפול"}</p>
+              <div class="info-box">
+                <div class="info-row"><span class="label">נושא:</span><span class="value">${data.title || "לא צוין"}</span></div>
+                <div class="info-row"><span class="label">תאריך יעד:</span><span class="value">${data.dueDate || "לא צוין"}</span></div>
+              </div>
+            </div>
+            <div class="footer">
+              <p>הודעה זו נשלחה אוטומטית ממערכת AEGIS Safety</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+    default:
+      return `
+        <!DOCTYPE html>
+        <html dir="rtl" lang="he">
+        <head><meta charset="UTF-8">${baseStyle}</head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📧 הודעה מ-AEGIS</h1>
+            </div>
+            <div class="content">
+              <p>${data.message || "הודעה ממערכת AEGIS"}</p>
+            </div>
+            <div class="footer">
+              <p>הודעה זו נשלחה אוטומטית ממערכת AEGIS Safety</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+  }
 }

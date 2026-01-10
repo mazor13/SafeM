@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Mail, Loader2 } from 'lucide-react';
 import { useFindings, FindingStatus } from '../../../phase4-equipment';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 export default function FindingsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const { findings, loading, error, stats, updateStatus } = useFindings({ realtime: true });
 
   const filteredFindings = filterStatus === 'all' 
@@ -18,6 +20,48 @@ export default function FindingsPage() {
       observation: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     };
     return colors[s] || 'bg-slate-500/20 text-slate-400';
+  };
+
+  const getSeverityText = (s: string) => {
+    const texts: Record<string, string> = {
+      critical: 'קריטי',
+      major: 'משמעותי',
+      minor: 'קל',
+      observation: 'הערה',
+    };
+    return texts[s] || s;
+  };
+
+  const handleSendEmail = async (finding: any) => {
+    const email = prompt('הכנס כתובת מייל לשליחה:');
+    if (!email) return;
+
+    setSendingEmail(finding.id);
+    try {
+      const functions = getFunctions();
+      const sendEmailNotification = httpsCallable(functions, 'sendEmailNotification');
+      
+      await sendEmailNotification({
+        to: email,
+        subject: `ממצא חדש: ${finding.title}`,
+        type: 'finding_created',
+        data: {
+          title: finding.title,
+          description: finding.description,
+          severity: finding.severity,
+          severityText: getSeverityText(finding.severity),
+          clientName: finding.clientName || 'לא צוין',
+          siteName: finding.siteName || 'לא צוין',
+        }
+      });
+
+      alert('המייל נשלח בהצלחה!');
+    } catch (err) {
+      console.error('Error sending email:', err);
+      alert('שגיאה בשליחת המייל');
+    } finally {
+      setSendingEmail(null);
+    }
   };
 
   return (
@@ -85,19 +129,33 @@ export default function FindingsPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getSeverityColor(finding.severity)}`}>
-                      {finding.severity}
+                      {getSeverityText(finding.severity)}
                     </span>
                     <h3 className="text-lg font-semibold text-white mt-2">{finding.title}</h3>
                     <p className="text-slate-400 text-sm">{finding.description}</p>
                   </div>
-                  {finding.status === 'open' && (
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => updateStatus(finding.id, 'in_progress' as FindingStatus)}
-                      className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded text-sm hover:bg-amber-500/30"
+                      onClick={() => handleSendEmail(finding)}
+                      disabled={sendingEmail === finding.id}
+                      className="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded text-sm hover:bg-indigo-500/30 flex items-center gap-1 disabled:opacity-50"
                     >
-                      התחל טיפול
+                      {sendingEmail === finding.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4" />
+                      )}
+                      שלח מייל
                     </button>
-                  )}
+                    {finding.status === 'open' && (
+                      <button
+                        onClick={() => updateStatus(finding.id, 'in_progress' as FindingStatus)}
+                        className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded text-sm hover:bg-amber-500/30"
+                      >
+                        התחל טיפול
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
