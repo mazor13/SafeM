@@ -68,6 +68,19 @@ service cloud.firestore {
     }
     
     // ============================================
+    // Column Definitions (Dynamic Entity Engine)
+    // ============================================
+    match /columnDefinitions/{columnId} {
+      // Anyone authenticated can read column definitions for their tenant
+      allow read: if isAuthenticated() && resourceBelongsToUserTenant();
+      
+      // Only admins can create/update/delete column definitions
+      allow create: if isAdmin() && newResourceBelongsToUserTenant();
+      allow update: if isAdmin() && resourceBelongsToUserTenant();
+      allow delete: if isAdmin() && resourceBelongsToUserTenant();
+    }
+    
+    // ============================================
     // Clients (main collection)
     // ============================================
     match /clients/{clientId} {
@@ -82,6 +95,12 @@ service cloud.firestore {
         allow create: if isAuthenticated();
         allow update: if isAuthenticated();
         allow delete: if isAdmin();
+        
+        // Dynamic column values for equipment
+        match /dynamicColumns/{columnId} {
+          allow read: if isAuthenticated();
+          allow write: if isAuthenticated();
+        }
       }
       
       // Inspections sub-collection
@@ -90,6 +109,12 @@ service cloud.firestore {
         allow create: if isAuthenticated();
         allow update: if isAuthenticated();
         allow delete: if isAdmin();
+        
+        // Dynamic column values for inspections
+        match /dynamicColumns/{columnId} {
+          allow read: if isAuthenticated();
+          allow write: if isAuthenticated();
+        }
       }
       
       // Findings sub-collection
@@ -98,6 +123,12 @@ service cloud.firestore {
         allow create: if isAuthenticated();
         allow update: if isAuthenticated();
         allow delete: if isAdmin();
+        
+        // Dynamic column values for findings
+        match /dynamicColumns/{columnId} {
+          allow read: if isAuthenticated();
+          allow write: if isAuthenticated();
+        }
       }
       
       // Documents sub-collection
@@ -245,6 +276,12 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
       allow delete: if isAdmin();
+      
+      // Dynamic column values
+      match /dynamicColumns/{columnId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
     }
     
     match /inspections/{inspectionId} {
@@ -252,6 +289,12 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
       allow delete: if isAdmin();
+      
+      // Dynamic column values
+      match /dynamicColumns/{columnId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
     }
     
     match /findings/{findingId} {
@@ -259,6 +302,28 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
       allow delete: if isAdmin();
+      
+      // Dynamic column values
+      match /dynamicColumns/{columnId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    // ============================================
+    // Tasks (global)
+    // ============================================
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
+      
+      // Dynamic column values
+      match /dynamicColumns/{columnId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
     }
     
     // ============================================
