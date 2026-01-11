@@ -937,3 +937,117 @@ export const triggerRemindersManually = onCall(
     }
   }
 );
+
+// =====================================================
+// NOTIFICATIONS SYSTEM - Issue #102
+// =====================================================
+
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+
+/**
+ * Create a new notification
+ */
+export const createNotification = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const { userId, tenantId, title, body, type, linkTo, linkType, linkId, sourceRuleId } = request.data;
+
+    if (!userId || !tenantId || !title || !body || !type) {
+      throw new HttpsError("invalid-argument", "Missing required fields");
+    }
+
+    try {
+      const db = getFirestore();
+      const notificationRef = await db.collection("notifications").add({
+        userId,
+        tenantId,
+        title,
+        body,
+        type,
+        linkTo: linkTo || null,
+        linkType: linkType || null,
+        linkId: linkId || null,
+        sourceRuleId: sourceRuleId || null,
+        isRead: false,
+        readAt: null,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      return {
+        success: true,
+        notificationId: notificationRef.id,
+      };
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      throw new HttpsError("internal", "Failed to create notification");
+    }
+  }
+);
+
+/**
+ * Mark a notification as read
+ */
+export const markNotificationRead = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const { notificationId } = request.data;
+
+    if (!notificationId) {
+      throw new HttpsError("invalid-argument", "Missing notificationId");
+    }
+
+    try {
+      const db = getFirestore();
+      await db.collection("notifications").doc(notificationId).update({
+        isRead: true,
+        readAt: FieldValue.serverTimestamp(),
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      throw new HttpsError("internal", "Failed to mark notification as read");
+    }
+  }
+);
+
+/**
+ * Mark all notifications as read for a user
+ */
+export const markAllNotificationsRead = onCall(
+  { region: "us-central1" },
+  async (request) => {
+    const { userId } = request.data;
+
+    if (!userId) {
+      throw new HttpsError("invalid-argument", "Missing userId");
+    }
+
+    try {
+      const db = getFirestore();
+      const snapshot = await db
+        .collection("notifications")
+        .where("userId", "==", userId)
+        .where("isRead", "==", false)
+        .get();
+
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.update(doc.ref, {
+          isRead: true,
+          readAt: FieldValue.serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+
+      return { 
+        success: true, 
+        updated: snapshot.size 
+      };
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      throw new HttpsError("internal", "Failed to mark all notifications as read");
+    }
+  }
+);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { OnboardingWizard } from '../components/onboarding';
 import { GlobalSearch } from '../components/search';
+import { NotificationBell } from '../components/notifications';
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -29,10 +30,10 @@ import {
   PieChart,
   History,
   CheckCircle,
-  Bell,
   Palette,
   Cloud,
-  Zap
+  Zap,
+  CheckSquare
 } from 'lucide-react';
 
 interface NavItem {
@@ -46,7 +47,7 @@ interface NavItem {
 export default function AdminLayout() {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
-  const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'reports']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'projects', 'reports']);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
@@ -133,6 +134,11 @@ export default function AdminLayout() {
     { name: 'ממתין לאישור', to: '/admin/pending-approvals', icon: Clock, badge: pendingCount },
   ];
 
+  // Phase 6 - Project Management
+  const projectNavigation: NavItem[] = [
+    { name: 'משימות', to: '/admin/tasks', icon: CheckSquare },
+  ];
+
   // Phase 5 - Reports & Analytics
   const reportsNavigation: NavItem[] = [
     { name: 'אנליטיקות', to: '/admin/analytics', icon: PieChart },
@@ -160,6 +166,7 @@ export default function AdminLayout() {
       cyan: 'bg-cyan-600 shadow-cyan-900/50',
       amber: 'bg-amber-600 shadow-amber-900/50',
       rose: 'bg-rose-600 shadow-rose-900/50',
+      purple: 'bg-purple-600 shadow-purple-900/50',
     };
 
     return (
@@ -187,7 +194,7 @@ export default function AdminLayout() {
             >
               <item.icon className="ml-3 h-4 w-4" />
               {item.name}
-              {item.badge > 0 && (
+              {item.badge !== undefined && item.badge > 0 && (
                 <span className="mr-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   {item.badge}
                 </span>
@@ -208,6 +215,7 @@ export default function AdminLayout() {
     localStorage.setItem("safem_onboarding_complete", "true");
     setShowOnboarding(false);
   };
+
   return (
     <div className="flex h-screen bg-[#0f172a] overflow-hidden font-sans" dir="rtl">
       
@@ -219,6 +227,7 @@ export default function AdminLayout() {
           userName={user?.displayName || undefined}
         />
       )}
+
       {/* Sidebar */}
       <aside className="w-72 bg-[#0f172a] text-white flex flex-col flex-shrink-0 border-l border-slate-800/50 z-50">
         
@@ -280,6 +289,9 @@ export default function AdminLayout() {
           {/* Equipment Section - Phase 4 */}
           <NavSection title="ניהול ציוד" items={equipmentNavigation} sectionKey="equipment" color="emerald" />
           
+          {/* Projects Section - Phase 6 */}
+          <NavSection title="פרויקטים" items={projectNavigation} sectionKey="projects" color="purple" />
+          
           {/* Reports Section - Phase 5 */}
           <NavSection title="דוחות" items={reportsNavigation} sectionKey="reports" color="cyan" />
           
@@ -305,17 +317,7 @@ export default function AdminLayout() {
           <GlobalSearch />
           <div className="flex items-center gap-4">
             {/* Notification Bell */}
-            <button
-              onClick={() => navigate("/admin/pending-approvals")}
-              className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-            >
-              <Bell className="h-5 w-5" />
-              {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold h-5 w-5 flex items-center justify-center rounded-full">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
+            <NotificationBell />
           </div>
         </div>
         <Outlet />
