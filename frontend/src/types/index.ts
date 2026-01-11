@@ -1,5 +1,5 @@
 /**
- * AEGIS Safety Management Platform
+ * SafeM Safety Management Platform
  * Types Index
  * 
  * Central export for all type definitions
@@ -13,3 +13,6 @@ export * from './safety.types';
 
 // Inspection Configuration
 export * from './inspection.config';
+
+// Dynamic Columns System
+export * from './columns';
