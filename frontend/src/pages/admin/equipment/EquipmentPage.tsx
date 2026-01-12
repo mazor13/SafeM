@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Upload, Box, Download, Loader2, Bell } from 'lucide-react';
+import { Plus, Upload, Box, Download, Loader2, Bell, LayoutGrid, Table2 } from 'lucide-react';
 import { EquipmentList, EquipmentListStyles, useEquipment, Equipment } from '../../../phase4-equipment';
 import { ExcelImport } from '../../../components/import';
 import { exportEquipmentList } from '../../../phase5-reports/services/ExcelExport';
@@ -8,6 +8,10 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { firestore, functions } from '../../../firebase';
 import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../../../providers/AuthProvider';
+import { DynamicTable } from '../../../components/dynamic-columns';
+import type { CellValue } from '../../../types/columns';
+
+type ViewMode = 'cards' | 'table';
 
 const EQUIPMENT_COLUMNS = [
   { key: 'name', label: 'שם הציוד', required: true },
@@ -27,6 +31,34 @@ export default function EquipmentPage() {
   const [showImport, setShowImport] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [sendingReminders, setSendingReminders] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+
+  // Transform equipment to table row format
+  const tableData = useMemo(() => {
+    return equipment.map(eq => {
+      const formatDate = (date: Date | string | undefined | null): string | null => {
+        if (!date) return null;
+        if (date instanceof Date) return date.toISOString();
+        if (typeof date === 'string') return date;
+        return null;
+      };
+
+      return {
+        id: eq.id,
+        name: { type: 'text', value: eq.name } as CellValue,
+        description: { type: 'text', value: eq.description || '' } as CellValue,
+        serialNumber: { type: 'text', value: eq.serialNumber || '' } as CellValue,
+        manufacturer: { type: 'text', value: eq.manufacturer || '' } as CellValue,
+        model: { type: 'text', value: eq.model || '' } as CellValue,
+        status: { type: 'status', optionId: eq.status } as CellValue,
+        locationDescription: { type: 'text', value: eq.locationDescription || '' } as CellValue,
+        installationDate: { type: 'date', value: formatDate(eq.installationDate) } as CellValue,
+        nextInspectionDate: { type: 'date', value: formatDate(eq.nextInspectionDate) } as CellValue,
+        domain: { type: 'text', value: eq.domain || '' } as CellValue,
+      };
+    });
+  }, [equipment]);
 
   const handleSelect = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
   const handleEdit = (eq: Equipment) => navigate(`/admin/equipment/${eq.id}/edit`);
@@ -35,6 +67,10 @@ export default function EquipmentPage() {
     if (window.confirm(`האם למחוק את "${eq.name}"?`)) {
       await deleteEquipment(eq.id);
     }
+  };
+
+  const handleRowClick = (rowId: string) => {
+    navigate(`/admin/equipment/${rowId}/edit`);
   };
 
   const handleExport = async () => {
@@ -64,7 +100,7 @@ export default function EquipmentPage() {
       const triggerReminders = httpsCallable(functions, 'triggerRemindersManually');
       const result = await triggerReminders({
         tenantId: user.tenantId,
-        testEmail: user.email // שלח למייל המשתמש הנוכחי לבדיקה
+        testEmail: user.email
       });
       
       const data = result.data as any;
@@ -149,6 +185,32 @@ export default function EquipmentPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-2 rounded-r-lg transition-colors ${
+                viewMode === 'cards' 
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="תצוגת כרטיסים"
+            >
+              <LayoutGrid className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded-l-lg transition-colors ${
+                viewMode === 'table' 
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              title="תצוגת טבלה"
+            >
+              <Table2 className="w-5 h-5" />
+            </button>
+          </div>
+
           <button
             onClick={handleTestReminders}
             disabled={sendingReminders}
@@ -197,14 +259,49 @@ export default function EquipmentPage() {
         </div>
       )}
 
-      <EquipmentList
-        equipment={equipment}
-        loading={loading}
-        onSelect={handleSelect}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAddNew={() => navigate('/admin/equipment/new')}
-      />
+      {viewMode === 'table' ? (
+        <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+          <DynamicTable
+            entityType="equipment"
+            data={tableData}
+            loading={loading}
+            onRowClick={handleRowClick}
+            selectable={true}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+            emptyMessage="לא נמצא ציוד"
+            className="!shadow-none !rounded-none"
+          />
+        </div>
+      ) : (
+        <EquipmentList
+          equipment={equipment}
+          loading={loading}
+          onSelect={handleSelect}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onAddNew={() => navigate('/admin/equipment/new')}
+        />
+      )}
+
+      {/* Selection info */}
+      {viewMode === 'table' && selectedRows.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 rounded-xl px-6 py-3 shadow-xl flex items-center gap-4">
+          <span className="text-white">{selectedRows.length} פריטים נבחרו</span>
+          <button
+            onClick={() => setSelectedRows([])}
+            className="px-3 py-1 bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
+          >
+            בטל בחירה
+          </button>
+          <button
+            onClick={() => {/* Bulk action */}}
+            className="px-3 py-1 bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30"
+          >
+            פעולה מרוכזת
+          </button>
+        </div>
+      )}
 
       <ExcelImport
         isOpen={showImport}
