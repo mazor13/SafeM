@@ -2,3 +2,4 @@
 export { CellFactory, CellSkeleton } from './CellFactory';
 export { ColumnManager } from './ColumnManager';
 export { ColumnSettings } from './ColumnSettings';
+export { ColumnReorder } from './ColumnReorder';
