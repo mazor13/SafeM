@@ -24,7 +24,7 @@ interface ColumnManagerProps {
   onClose: () => void;
   entityType: EntityType;
   existingColumn?: ColumnDefinition; // For edit mode
-  onSave: (data: CreateColumnInput | UpdateColumnInput) => Promise<void>;
+  onSave: (data: Partial<CreateColumnInput> | UpdateColumnInput) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
 }
 
@@ -76,7 +76,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
   const [step, setStep] = useState<'type' | 'details'>(isEditMode ? 'details' : 'type');
   const [selectedType, setSelectedType] = useState<ColumnType | null>(existingColumn?.type || null);
   const [title, setTitle] = useState(existingColumn?.title || '');
-  const [width, setWidth] = useState(existingColumn?.width || DEFAULT_COLUMN_WIDTH);
+  const [width, setWidth] = useState(existingColumn?.width || DEFAULT_COLUMN_WIDTH[selectedType || 'text']);
   const [required, setRequired] = useState(existingColumn?.required || false);
   const [settings, setSettings] = useState<Record<string, any>>(existingColumn?.settings || {});
   
@@ -90,7 +90,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
     setStep(isEditMode ? 'details' : 'type');
     setSelectedType(existingColumn?.type || null);
     setTitle(existingColumn?.title || '');
-    setWidth(existingColumn?.width || DEFAULT_COLUMN_WIDTH);
+    setWidth(existingColumn?.width || DEFAULT_COLUMN_WIDTH[selectedType || 'text']);
     setRequired(existingColumn?.required || false);
     setSettings(existingColumn?.settings || {});
     setError(null);
@@ -143,7 +143,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
       setSaving(true);
       setError(null);
 
-      const data: CreateColumnInput = {
+      const data = {
         type: selectedType,
         title: title.trim(),
         width,
@@ -253,7 +253,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
         <input
           type="number"
           value={width}
-          onChange={(e) => setWidth(parseInt(e.target.value) || DEFAULT_COLUMN_WIDTH)}
+          onChange={(e) => setWidth(parseInt(e.target.value) || DEFAULT_COLUMN_WIDTH[selectedType || 'text'])}
           min={50}
           max={500}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

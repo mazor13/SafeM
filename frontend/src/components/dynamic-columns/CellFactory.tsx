@@ -1,8 +1,16 @@
 // ===========================================
 // SafeM - CellFactory Component
-// Dynamic Entity Engine - Cell Renderer
+// Dynamic Entity Engine - Cell Renderer Factory
 // ===========================================
-import React, { memo, Suspense, lazy } from 'react';
+import React, { useState, memo, Suspense } from 'react';
+import { 
+  Calendar, 
+  User, 
+  FileText, 
+  AlertCircle,
+  ChevronDown,
+  X,
+} from 'lucide-react';
 import {
   ColumnDefinition,
   ColumnType,
@@ -14,451 +22,553 @@ import {
   DateCellValue,
   PriorityCellValue,
   FileCellValue,
+  StatusColumnSettings,
+  NumberColumnSettings,
+  TextColumnSettings,
+  DateColumnSettings,
+  PriorityColumnSettings,
+  DEFAULT_PRIORITY_LEVELS,
 } from '../../types/columns';
 
 // ===========================================
 // TYPES
 // ===========================================
 
-export type CellMode = 'view' | 'edit';
-
-export interface CellProps<T extends CellValue = CellValue> {
-  column: ColumnDefinition;
-  value: T | null;
-  mode: CellMode;
-  onChange?: (value: T | null) => void;
-  onBlur?: () => void;
-  disabled?: boolean;
-  className?: string;
-}
-
-export interface CellFactoryProps {
+interface CellFactoryProps {
   column: ColumnDefinition;
   value: CellValue | null;
-  mode?: CellMode;
-  onChange?: (value: CellValue | null) => void;
-  onBlur?: () => void;
+  onChange?: (value: CellValue) => void;
+  isEditing?: boolean;
   disabled?: boolean;
-  className?: string;
+}
+
+interface BaseCellProps<T extends CellValue> {
+  column: ColumnDefinition;
+  value: T | null;
+  onChange?: (value: T) => void;
+  isEditing?: boolean;
+  disabled?: boolean;
 }
 
 // ===========================================
 // LOADING SKELETON
 // ===========================================
 
-const CellSkeleton: React.FC<{ width?: number }> = ({ width = 100 }) => (
+export const CellSkeleton: React.FC<{ width?: number }> = ({ width = 100 }) => (
   <div 
-    className="animate-pulse bg-gray-200 rounded h-6"
+    className="animate-pulse bg-gray-200 rounded h-6" 
     style={{ width: `${width}px` }}
   />
 );
 
 // ===========================================
-// PLACEHOLDER CELLS (will be replaced with actual implementations)
+// TEXT CELL
 // ===========================================
 
-// Text Cell
-const TextCell: React.FC<CellProps<TextCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  onBlur,
-  disabled,
-  className = '',
+const TextCell = memo<BaseCellProps<TextCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
 }) => {
-  const settings = column.settings as { placeholder?: string; maxLength?: number; multiline?: boolean };
-  
-  if (mode === 'view') {
-    return (
-      <span className={`text-gray-900 truncate ${className}`}>
-        {value?.value || <span className="text-gray-400">-</span>}
-      </span>
-    );
-  }
+  const settings = column.settings as TextColumnSettings | undefined;
+  const textValue = value?.value ?? '';
 
-  if (settings?.multiline) {
+  if (isEditing && !disabled) {
+    if (settings?.multiline) {
+      return (
+        <textarea
+          value={textValue}
+          onChange={(e) => onChange?.({ type: 'text', value: e.target.value })}
+          placeholder={settings?.placeholder || 'הזן טקסט...'}
+          maxLength={settings?.maxLength}
+          className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          rows={2}
+        />
+      );
+    }
     return (
-      <textarea
-        value={value?.value || ''}
-        onChange={(e) => onChange?.({ value: e.target.value })}
-        onBlur={onBlur}
-        disabled={disabled}
-        placeholder={settings?.placeholder}
+      <input
+        type="text"
+        value={textValue}
+        onChange={(e) => onChange?.({ type: 'text', value: e.target.value })}
+        placeholder={settings?.placeholder || 'הזן טקסט...'}
         maxLength={settings?.maxLength}
-        className={`w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-        rows={2}
+        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
     );
   }
 
   return (
-    <input
-      type="text"
-      value={value?.value || ''}
-      onChange={(e) => onChange?.({ value: e.target.value })}
-      onBlur={onBlur}
-      disabled={disabled}
-      placeholder={settings?.placeholder}
-      maxLength={settings?.maxLength}
-      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-    />
+    <span className="text-sm text-gray-900 truncate" title={textValue}>
+      {textValue || <span className="text-gray-400">-</span>}
+    </span>
   );
 });
+
 TextCell.displayName = 'TextCell';
 
-// Number Cell
-const NumberCell: React.FC<CellProps<NumberCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  onBlur,
-  disabled,
-  className = '',
+// ===========================================
+// NUMBER CELL
+// ===========================================
+
+const NumberCell = memo<BaseCellProps<NumberCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
 }) => {
-  const settings = column.settings as { 
-    min?: number; 
-    max?: number; 
-    precision?: number;
-    prefix?: string;
-    suffix?: string;
-  };
+  const settings = column.settings as NumberColumnSettings | undefined;
+  const numValue = value?.value ?? null;
 
-  const formatValue = (val: number | undefined): string => {
-    if (val === undefined || val === null) return '';
-    const formatted = settings?.precision !== undefined 
-      ? val.toFixed(settings.precision)
-      : val.toString();
-    return `${settings?.prefix || ''}${formatted}${settings?.suffix || ''}`;
-  };
-
-  if (mode === 'view') {
-    return (
-      <span className={`text-gray-900 ${className}`}>
-        {value?.value !== undefined ? formatValue(value.value) : <span className="text-gray-400">-</span>}
-      </span>
-    );
-  }
-
-  return (
-    <input
-      type="number"
-      value={value?.value ?? ''}
-      onChange={(e) => {
-        const val = e.target.value === '' ? null : parseFloat(e.target.value);
-        onChange?.(val !== null ? { value: val } : null);
-      }}
-      onBlur={onBlur}
-      disabled={disabled}
-      min={settings?.min}
-      max={settings?.max}
-      step={settings?.precision ? Math.pow(10, -settings.precision) : 1}
-      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-    />
-  );
-});
-NumberCell.displayName = 'NumberCell';
-
-// Status Cell
-const StatusCell: React.FC<CellProps<StatusCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  disabled,
-  className = '',
-}) => {
-  const settings = column.settings as { 
-    options?: Array<{ value: string; label: string; color: string }>;
-    allowMultiple?: boolean;
-  };
-  const options = settings?.options || [];
-  const currentOption = options.find(opt => opt.value === value?.value);
-
-  if (mode === 'view') {
-    if (!currentOption) {
-      return <span className="text-gray-400">-</span>;
+  const formatNumber = (num: number | null): string => {
+    if (num === null) return '';
+    
+    const formatted = settings?.decimals !== undefined 
+      ? num.toFixed(settings.decimals)
+      : num.toString();
+    
+    if (settings?.format === 'currency') {
+      return `₪${formatted}`;
     }
-    return (
-      <span
-        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${className}`}
-        style={{ 
-          backgroundColor: `${currentOption.color}20`,
-          color: currentOption.color,
-        }}
-      >
-        {currentOption.label}
-      </span>
-    );
-  }
-
-  return (
-    <select
-      value={value?.value || ''}
-      onChange={(e) => onChange?.(e.target.value ? { value: e.target.value } : null)}
-      disabled={disabled}
-      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-    >
-      <option value="">בחר סטטוס</option>
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-});
-StatusCell.displayName = 'StatusCell';
-
-// Person Cell
-const PersonCell: React.FC<CellProps<PersonCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  disabled,
-  className = '',
-}) => {
-  // TODO: Implement with user selection
-  if (mode === 'view') {
-    if (!value?.userId) {
-      return <span className="text-gray-400">-</span>;
+    if (settings?.format === 'percentage') {
+      return `${formatted}%`;
     }
+    if (settings?.unit && settings?.showUnit !== false) {
+      return `${formatted} ${settings.unit}`;
+    }
+    return formatted;
+  };
+
+  if (isEditing && !disabled) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">
-          {value.displayName?.charAt(0) || '?'}
-        </div>
-        <span className="text-gray-900 text-sm">{value.displayName}</span>
+      <div className="flex items-center gap-1">
+        {settings?.unit && settings?.showUnit !== false && (
+          <span className="text-gray-500 text-sm">{settings.unit}</span>
+        )}
+        <input
+          type="number"
+          value={numValue ?? ''}
+          onChange={(e) => {
+            const val = e.target.value === '' ? null : parseFloat(e.target.value);
+            onChange?.({ type: 'number', value: val });
+          }}
+          min={settings?.min}
+          max={settings?.max}
+          step={settings?.decimals ? Math.pow(10, -settings.decimals) : 1}
+          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </div>
     );
   }
 
   return (
-    <div className={`text-gray-500 text-sm ${className}`}>
-      {value?.displayName || 'בחר משתמש...'}
+    <span className="text-sm text-gray-900">
+      {numValue !== null ? formatNumber(numValue) : <span className="text-gray-400">-</span>}
+    </span>
+  );
+});
+
+NumberCell.displayName = 'NumberCell';
+
+// ===========================================
+// STATUS CELL
+// ===========================================
+
+const StatusCell = memo<BaseCellProps<StatusCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const settings = column.settings as StatusColumnSettings | undefined;
+  const options = settings?.options || [];
+  const currentOption = options.find(opt => opt.id === value?.optionId);
+
+  if (isEditing && !disabled) {
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1 px-2 py-1 rounded text-sm w-full"
+          style={{ backgroundColor: currentOption?.color || '#e5e7eb' }}
+        >
+          <span className="text-white font-medium truncate">
+            {currentOption?.label || 'בחר סטטוס'}
+          </span>
+          <ChevronDown size={14} className="text-white flex-shrink-0" />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+            {options.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  onChange?.({ type: 'status', optionId: opt.id });
+                  setIsOpen(false);
+                }}
+                className="w-full px-3 py-2 text-right hover:bg-gray-50 flex items-center gap-2"
+              >
+                <span 
+                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: opt.color }}
+                />
+                <span className="text-sm">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!currentOption) {
+    return <span className="text-gray-400 text-sm">-</span>;
+  }
+
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+      style={{ backgroundColor: currentOption.color }}
+    >
+      {currentOption.label}
+    </span>
+  );
+});
+
+StatusCell.displayName = 'StatusCell';
+
+// ===========================================
+// PERSON CELL
+// ===========================================
+
+const PersonCell = memo<BaseCellProps<PersonCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
+}) => {
+  const userIds = value?.userIds || [];
+  
+  // TODO: Fetch user details from context/hook
+  // For now, show placeholder
+  const displayUsers = userIds.length > 0 
+    ? userIds.map(id => ({ id, name: `משתמש ${id.slice(0, 4)}` }))
+    : [];
+
+  if (isEditing && !disabled) {
+    return (
+      <div className="flex items-center gap-1">
+        <User size={16} className="text-gray-400" />
+        <span className="text-sm text-gray-500">
+          {displayUsers.length > 0 
+            ? displayUsers.map(u => u.name).join(', ')
+            : 'בחר משתמש...'}
+        </span>
+        {/* TODO: Add user picker dropdown */}
+      </div>
+    );
+  }
+
+  if (displayUsers.length === 0) {
+    return <span className="text-gray-400 text-sm">-</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+        <span className="text-white text-xs font-medium">
+          {displayUsers[0]?.name?.charAt(0) || '?'}
+        </span>
+      </div>
+      <span className="text-sm text-gray-900 truncate">
+        {displayUsers.map(u => u.name).join(', ')}
+      </span>
+      {displayUsers.length > 1 && (
+        <span className="text-xs text-gray-500">+{displayUsers.length - 1}</span>
+      )}
     </div>
   );
 });
+
 PersonCell.displayName = 'PersonCell';
 
-// Date Cell
-const DateCell: React.FC<CellProps<DateCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  onBlur,
-  disabled,
-  className = '',
+// ===========================================
+// DATE CELL
+// ===========================================
+
+const DateCell = memo<BaseCellProps<DateCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
 }) => {
-  const settings = column.settings as { 
-    includeTime?: boolean;
-    format?: string;
-  };
+  const settings = column.settings as DateColumnSettings | undefined;
+  const dateValue = value?.value ?? null;
 
-  const formatDate = (date: Date | undefined): string => {
-    if (!date) return '';
-    const d = new Date(date);
+  const formatDate = (isoString: string | null): string => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
     if (settings?.includeTime) {
-      return d.toLocaleString('he-IL');
+      return date.toLocaleString('he-IL');
     }
-    return d.toLocaleDateString('he-IL');
+    return date.toLocaleDateString('he-IL');
   };
 
-  const toInputValue = (date: Date | undefined): string => {
-    if (!date) return '';
-    const d = new Date(date);
-    if (settings?.includeTime) {
-      return d.toISOString().slice(0, 16);
-    }
-    return d.toISOString().slice(0, 10);
-  };
-
-  if (mode === 'view') {
+  if (isEditing && !disabled) {
     return (
-      <span className={`text-gray-900 ${className}`}>
-        {value?.value ? formatDate(value.value) : <span className="text-gray-400">-</span>}
-      </span>
+      <input
+        type={settings?.includeTime ? 'datetime-local' : 'date'}
+        value={dateValue ? dateValue.slice(0, settings?.includeTime ? 16 : 10) : ''}
+        onChange={(e) => {
+          const newValue = e.target.value ? new Date(e.target.value).toISOString() : null;
+          onChange?.({ type: 'date', value: newValue });
+        }}
+        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
     );
   }
 
   return (
-    <input
-      type={settings?.includeTime ? 'datetime-local' : 'date'}
-      value={toInputValue(value?.value)}
-      onChange={(e) => {
-        const val = e.target.value ? new Date(e.target.value) : null;
-        onChange?.(val ? { value: val } : null);
-      }}
-      onBlur={onBlur}
-      disabled={disabled}
-      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-    />
+    <div className="flex items-center gap-1">
+      <Calendar size={14} className="text-gray-400" />
+      <span className="text-sm text-gray-900">
+        {dateValue ? formatDate(dateValue) : <span className="text-gray-400">-</span>}
+      </span>
+    </div>
   );
 });
+
 DateCell.displayName = 'DateCell';
 
-// Priority Cell
-const PriorityCell: React.FC<CellProps<PriorityCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  disabled,
-  className = '',
+// ===========================================
+// PRIORITY CELL
+// ===========================================
+
+const PriorityCell = memo<BaseCellProps<PriorityCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
 }) => {
-  const settings = column.settings as { 
-    levels?: Array<{ value: string; label: string; color: string; icon?: string }>;
-  };
-  const levels = settings?.levels || [];
-  const currentLevel = levels.find(lvl => lvl.value === value?.level);
+  const [isOpen, setIsOpen] = useState(false);
+  const settings = column.settings as PriorityColumnSettings | undefined;
+  const levels = settings?.levels || DEFAULT_PRIORITY_LEVELS;
+  const currentLevel = levels.find(l => l.id === value?.levelId);
 
-  if (mode === 'view') {
-    if (!currentLevel) {
-      return <span className="text-gray-400">-</span>;
-    }
+  if (isEditing && !disabled) {
     return (
-      <span
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${className}`}
-        style={{ 
-          backgroundColor: `${currentLevel.color}20`,
-          color: currentLevel.color,
-        }}
-      >
-        {currentLevel.icon && <span>{currentLevel.icon}</span>}
-        {currentLevel.label}
-      </span>
-    );
-  }
-
-  return (
-    <select
-      value={value?.level || ''}
-      onChange={(e) => onChange?.(e.target.value ? { level: e.target.value } : null)}
-      disabled={disabled}
-      className={`w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${className}`}
-    >
-      <option value="">בחר עדיפות</option>
-      {levels.map(lvl => (
-        <option key={lvl.value} value={lvl.value}>
-          {lvl.label}
-        </option>
-      ))}
-    </select>
-  );
-});
-PriorityCell.displayName = 'PriorityCell';
-
-// File Cell
-const FileCell: React.FC<CellProps<FileCellValue>> = memo(({
-  column,
-  value,
-  mode,
-  onChange,
-  disabled,
-  className = '',
-}) => {
-  const files = value?.files || [];
-
-  if (mode === 'view') {
-    if (files.length === 0) {
-      return <span className="text-gray-400">-</span>;
-    }
-    return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        <span className="text-blue-600 text-sm">
-          📎 {files.length} {files.length === 1 ? 'קובץ' : 'קבצים'}
-        </span>
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center gap-1 px-2 py-1 rounded text-sm border border-gray-300 w-full"
+        >
+          {currentLevel ? (
+            <>
+              <span>{currentLevel.icon}</span>
+              <span style={{ color: currentLevel.color }}>{currentLevel.label}</span>
+            </>
+          ) : (
+            <span className="text-gray-400">בחר עדיפות</span>
+          )}
+          <ChevronDown size={14} className="text-gray-400 mr-auto" />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+            {levels.map((level) => (
+              <button
+                key={level.id}
+                onClick={() => {
+                  onChange?.({ type: 'priority', levelId: level.id });
+                  setIsOpen(false);
+                }}
+                className="w-full px-3 py-2 text-right hover:bg-gray-50 flex items-center gap-2"
+              >
+                <span>{level.icon}</span>
+                <span className="text-sm" style={{ color: level.color }}>
+                  {level.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
+  if (!currentLevel) {
+    return <span className="text-gray-400 text-sm">-</span>;
+  }
+
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      className={`text-blue-600 text-sm hover:underline ${className}`}
-    >
-      + הוסף קובץ
-    </button>
+    <div className="flex items-center gap-1">
+      <span>{currentLevel.icon}</span>
+      <span className="text-sm font-medium" style={{ color: currentLevel.color }}>
+        {currentLevel.label}
+      </span>
+    </div>
   );
 });
+
+PriorityCell.displayName = 'PriorityCell';
+
+// ===========================================
+// FILE CELL
+// ===========================================
+
+const FileCell = memo<BaseCellProps<FileCellValue>>(({ 
+  column, 
+  value, 
+  onChange, 
+  isEditing,
+  disabled 
+}) => {
+  const files = value?.files || [];
+
+  if (isEditing && !disabled) {
+    return (
+      <div className="flex items-center gap-1">
+        <FileText size={16} className="text-gray-400" />
+        <span className="text-sm text-gray-500">
+          {files.length > 0 ? `${files.length} קבצים` : 'העלה קובץ...'}
+        </span>
+        {/* TODO: Add file upload functionality */}
+      </div>
+    );
+  }
+
+  if (files.length === 0) {
+    return <span className="text-gray-400 text-sm">-</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <FileText size={14} className="text-blue-500" />
+      <span className="text-sm text-blue-600 hover:underline cursor-pointer">
+        {files.length === 1 ? files[0].name : `${files.length} קבצים`}
+      </span>
+    </div>
+  );
+});
+
 FileCell.displayName = 'FileCell';
 
 // ===========================================
-// CELL FACTORY
+// CELL FACTORY (MAIN COMPONENT)
 // ===========================================
 
-export const CellFactory: React.FC<CellFactoryProps> = memo(({
+export const CellFactory: React.FC<CellFactoryProps> = ({
   column,
   value,
-  mode = 'view',
   onChange,
-  onBlur,
+  isEditing = false,
   disabled = false,
-  className = '',
 }) => {
-  const cellProps = {
-    column,
-    mode,
-    onChange,
-    onBlur,
-    disabled,
-    className,
-  };
-
   const renderCell = () => {
     switch (column.type) {
       case 'text':
-        return <TextCell {...cellProps} value={value as TextCellValue | null} />;
+        return (
+          <TextCell
+            column={column}
+            value={value as TextCellValue | null}
+            onChange={onChange as ((v: TextCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       case 'number':
-        return <NumberCell {...cellProps} value={value as NumberCellValue | null} />;
+        return (
+          <NumberCell
+            column={column}
+            value={value as NumberCellValue | null}
+            onChange={onChange as ((v: NumberCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       case 'status':
-        return <StatusCell {...cellProps} value={value as StatusCellValue | null} />;
+        return (
+          <StatusCell
+            column={column}
+            value={value as StatusCellValue | null}
+            onChange={onChange as ((v: StatusCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       case 'person':
-        return <PersonCell {...cellProps} value={value as PersonCellValue | null} />;
+        return (
+          <PersonCell
+            column={column}
+            value={value as PersonCellValue | null}
+            onChange={onChange as ((v: PersonCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       case 'date':
-        return <DateCell {...cellProps} value={value as DateCellValue | null} />;
+        return (
+          <DateCell
+            column={column}
+            value={value as DateCellValue | null}
+            onChange={onChange as ((v: DateCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       case 'priority':
-        return <PriorityCell {...cellProps} value={value as PriorityCellValue | null} />;
+        return (
+          <PriorityCell
+            column={column}
+            value={value as PriorityCellValue | null}
+            onChange={onChange as ((v: PriorityCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       case 'file':
-        return <FileCell {...cellProps} value={value as FileCellValue | null} />;
+        return (
+          <FileCell
+            column={column}
+            value={value as FileCellValue | null}
+            onChange={onChange as ((v: FileCellValue) => void) | undefined}
+            isEditing={isEditing}
+            disabled={disabled}
+          />
+        );
       
       default:
-        console.warn(`Unknown column type: ${column.type}`);
-        return <span className="text-gray-400">סוג לא נתמך</span>;
+        return (
+          <div className="flex items-center gap-1 text-red-500">
+            <AlertCircle size={14} />
+            <span className="text-sm">סוג לא נתמך</span>
+          </div>
+        );
     }
   };
 
   return (
     <Suspense fallback={<CellSkeleton width={column.width} />}>
-      {renderCell()}
+      <div className="min-h-[28px] flex items-center">
+        {renderCell()}
+      </div>
     </Suspense>
   );
-});
-
-CellFactory.displayName = 'CellFactory';
-
-// ===========================================
-// EXPORTS
-// ===========================================
-
-export {
-  TextCell,
-  NumberCell,
-  StatusCell,
-  PersonCell,
-  DateCell,
-  PriorityCell,
-  FileCell,
 };
 
 export default CellFactory;
