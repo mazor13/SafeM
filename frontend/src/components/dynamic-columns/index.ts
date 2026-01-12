@@ -13,4 +13,6 @@ export {
   FileCell,
 } from './CellFactory';
 
+export { ColumnManager } from './ColumnManager';
+
 export type { CellProps, CellFactoryProps, CellMode } from './CellFactory';
