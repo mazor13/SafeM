@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useTasks } from '../hooks/useTasks';
 import { Task, TaskStatus, TaskPriority, CreateTaskInput } from '../types/tasks';
 import { formatDistanceToNow } from 'date-fns';
@@ -7,18 +7,19 @@ import { he } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { 
-  ListFilter, 
   LayoutGrid, 
   List as ListIcon, 
   Calendar,
   User,
   Tag,
   Link2,
-  ArrowUpDown,
-  Search
+  Search,
+  Table2
 } from 'lucide-react';
+import { DynamicTable } from '../components/dynamic-columns';
+import type { CellValue } from '../types/columns';
 
-type ViewMode = 'kanban' | 'list';
+type ViewMode = 'kanban' | 'list' | 'table';
 
 const statusConfig = {
   todo: { label: 'לביצוע', color: 'bg-gray-100 text-gray-800', icon: '📋' },
@@ -43,6 +44,7 @@ export default function Tasks() {
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
   const [sortBy, setSortBy] = useState<'created' | 'priority' | 'dueDate'>('created');
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
   
   const [newTask, setNewTask] = useState<CreateTaskInput & { tags?: string[] }>({
     title: '',
@@ -102,11 +104,28 @@ export default function Tasks() {
     return 0;
   });
 
+  // Transform tasks to table row format
+  const tableData = useMemo(() => {
+    return filteredTasks.map(task => ({
+      id: task.id,
+      title: { type: 'text', value: task.title } as CellValue,
+      description: { type: 'text', value: task.description || '' } as CellValue,
+      status: { type: 'status', optionId: task.status } as CellValue,
+      priority: { type: 'status', optionId: task.priority } as CellValue,
+      dueDate: { type: 'date', value: task.dueDate?.toDate?.()?.toISOString() || null } as CellValue,
+      createdAt: { type: 'date', value: task.createdAt?.toDate?.()?.toISOString() || null } as CellValue,
+    }));
+  }, [filteredTasks]);
+
   const tasksByStatus = filteredTasks.reduce((acc, task) => {
     if (!acc[task.status]) acc[task.status] = [];
     acc[task.status].push(task);
     return acc;
   }, {} as Record<TaskStatus, Task[]>);
+
+  const handleRowClick = (rowId: string) => {
+    navigate(`/admin/tasks/${rowId}`);
+  };
 
   if (loading) {
     return (
@@ -189,7 +208,7 @@ export default function Tasks() {
           </select>
 
           {/* View Toggle */}
-          <div className="flex gap-2 border border-slate-600 rounded-lg p-1 bg-slate-900">
+          <div className="flex gap-1 border border-slate-600 rounded-lg p-1 bg-slate-900">
             <button
               onClick={() => setViewMode('kanban')}
               className={`p-2 rounded transition-colors ${
@@ -212,6 +231,17 @@ export default function Tasks() {
             >
               <ListIcon className="h-5 w-5" />
             </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`p-2 rounded transition-colors ${
+                viewMode === 'table' 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+              title="תצוגת טבלה דינמית"
+            >
+              <Table2 className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -226,19 +256,52 @@ export default function Tasks() {
         />
       )}
 
-      {/* Content - Kanban or List */}
+      {/* Content */}
       {viewMode === 'kanban' ? (
         <KanbanView 
           tasksByStatus={tasksByStatus} 
           onStatusChange={handleStatusChange} 
           navigate={navigate}
         />
-      ) : (
+      ) : viewMode === 'list' ? (
         <ListView 
           tasks={filteredTasks} 
           onStatusChange={handleStatusChange} 
           navigate={navigate}
         />
+      ) : (
+        <div className="bg-slate-800/50 rounded-lg border border-slate-700 overflow-hidden">
+          <DynamicTable
+            entityType="task"
+            data={tableData}
+            loading={loading}
+            onRowClick={handleRowClick}
+            selectable={true}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+            emptyMessage="אין משימות להצגה"
+            className="!shadow-none !rounded-none"
+          />
+        </div>
+      )}
+
+      {/* Selection info for table view */}
+      {viewMode === 'table' && selectedRows.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-700 rounded-xl px-6 py-3 shadow-xl flex items-center gap-4">
+          <span className="text-white">{selectedRows.length} משימות נבחרו</span>
+          <button
+            onClick={() => setSelectedRows([])}
+            className="px-3 py-1 bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
+          >
+            בטל בחירה
+          </button>
+          <button
+            onClick={() => {/* Bulk action */}}
+            className="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded hover:bg-indigo-500/30"
+          >
+            פעולה מרוכזת
+          </button>
+        </div>
       )}
     </div>
   );
@@ -499,7 +562,7 @@ function TaskCard({ task, onStatusChange, navigate }: { task: Task; onStatusChan
       <div className="flex items-start justify-between mb-2">
         <h3 className="font-medium text-white flex-1 line-clamp-2">{task.title}</h3>
         <button
-          onClick={() => setShowActions(!showActions)}
+          onClick={(e) => { e.stopPropagation(); setShowActions(!showActions); }}
           className="text-gray-400 hover:text-white transition-colors"
         >
           ⋮
@@ -539,7 +602,8 @@ function TaskCard({ task, onStatusChange, navigate }: { task: Task; onStatusChan
               .map((status) => (
                 <button
                   key={status}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onStatusChange(task.id, status);
                     setShowActions(false);
                   }}
