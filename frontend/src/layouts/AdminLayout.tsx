@@ -131,6 +131,7 @@ export default function AdminLayout() {
   const equipmentNavigation: NavItem[] = [
     { name: 'ציוד', to: '/admin/equipment', icon: Box },
     { name: 'ממצאים', to: '/admin/findings', icon: AlertTriangle },
+    { name: 'בדיקות', to: '/admin/inspections', icon: ClipboardCheck },
     { name: 'ממתין לאישור', to: '/admin/pending-approvals', icon: Clock, badge: pendingCount },
   ];
 
