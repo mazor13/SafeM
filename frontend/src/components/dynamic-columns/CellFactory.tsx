@@ -466,7 +466,7 @@ FileCell.displayName = 'FileCell';
 // CELL FACTORY (MAIN COMPONENT)
 // ===========================================
 
-export const CellFactory: React.FC<CellFactoryProps> = ({
+export const CellFactory: React.FC<CellFactoryProps> = memo(({
   column,
   value,
   onChange,
@@ -569,6 +569,16 @@ export const CellFactory: React.FC<CellFactoryProps> = ({
       </div>
     </Suspense>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if these actually change
+  return (
+    prevProps.column.id === nextProps.column.id &&
+    prevProps.value === nextProps.value &&
+    prevProps.isEditing === nextProps.isEditing &&
+    prevProps.disabled === nextProps.disabled
+  );
+});
+
+CellFactory.displayName = 'CellFactory';
 
 export default CellFactory;

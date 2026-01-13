@@ -8,7 +8,8 @@
  * @issue #117
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
+import { debounce } from 'lodash';
 import { useColumnDefinitions } from '../../hooks/useColumnDefinitions';
 import { CellFactory } from './CellFactory';
 import { ColumnManager } from './ColumnManager';
@@ -79,7 +80,7 @@ const EmptyState: React.FC<{ message: string }> = ({ message }) => (
   </div>
 );
 
-const HeaderCell: React.FC<{
+const HeaderCell = memo<{
   column: ColumnDefinition;
   isFirst: boolean;
   isLast: boolean;
@@ -89,7 +90,7 @@ const HeaderCell: React.FC<{
   onToggleVisibility: () => void;
   onMove: (direction: 'left' | 'right') => void;
   onWidthChange: (width: number) => void;
-}> = ({
+}>(({
   column,
   isFirst,
   isLast,
@@ -142,7 +143,9 @@ const HeaderCell: React.FC<{
       )}
     </th>
   );
-};
+});
+
+HeaderCell.displayName = 'HeaderCell';
 
 const TableToolbar: React.FC<{
   onAddColumn: () => void;
@@ -266,9 +269,12 @@ export const DynamicTable: React.FC<DynamicTableProps> = ({
     await reorderColumns(newOrder.map(c => c.id));
   }, [columns, reorderColumns]);
 
-  const handleWidthChange = useCallback(async (columnId: string, width: number) => {
-    await updateColumn(columnId, { width });
-  }, [updateColumn]);
+  const handleWidthChange = useMemo(
+    () => debounce(async (columnId: string, width: number) => {
+      await updateColumn(columnId, { width });
+    }, 300),
+    [updateColumn]
+  );
 
   const handleSaveColumn = useCallback(async (columnData: Partial<CreateColumnInput> | UpdateColumnInput) => {
     if (editingColumn) {
