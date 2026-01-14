@@ -580,5 +580,4 @@ export const CellFactory: React.FC<CellFactoryProps> = memo(({
 });
 
 CellFactory.displayName = 'CellFactory';
-
 export default CellFactory;
