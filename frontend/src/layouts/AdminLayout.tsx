@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OnboardingWizard } from '../components/onboarding';
 import { GlobalSearch } from '../components/search';
 import { NotificationBell } from '../components/notifications';
+import HelpCenter from '../components/HelpCenter'; // Import HelpCenter
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -33,7 +34,8 @@ import {
   Palette,
   Cloud,
   Zap,
-  CheckSquare
+  CheckSquare,
+  Book // Added Book icon
 } from 'lucide-react';
 
 interface NavItem {
@@ -50,6 +52,7 @@ export default function AdminLayout() {
   const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'projects', 'reports']);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+  const [showHelp, setShowHelp] = useState<boolean>(false); // Help Center State
 
   // Fetch pending approvals count
   useEffect(() => {
@@ -229,6 +232,9 @@ export default function AdminLayout() {
         />
       )}
 
+      {/* Help Center Component */}
+      <HelpCenter isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
       {/* Sidebar */}
       <aside className="w-72 bg-[#0f172a] text-white flex flex-col flex-shrink-0 border-l border-slate-800/50 z-50">
         
@@ -281,22 +287,12 @@ export default function AdminLayout() {
             ))}
           </div>
 
-          {/* CRM Section */}
+          {/* Sections */}
           <NavSection title="CRM - מכירות" items={crmNavigation} sectionKey="crm" color="amber" />
-          
-          {/* Safety Section */}
           <NavSection title="בטיחות" items={safetyNavigation} sectionKey="safety" color="rose" />
-          
-          {/* Equipment Section - Phase 4 */}
           <NavSection title="ניהול ציוד" items={equipmentNavigation} sectionKey="equipment" color="emerald" />
-          
-          {/* Projects Section - Phase 6 */}
           <NavSection title="פרויקטים" items={projectNavigation} sectionKey="projects" color="purple" />
-          
-          {/* Reports Section - Phase 5 */}
           <NavSection title="דוחות" items={reportsNavigation} sectionKey="reports" color="cyan" />
-          
-          {/* Management Section */}
           <NavSection title="ניהול" items={managementNavigation} sectionKey="management" />
           
         </nav>
@@ -317,6 +313,16 @@ export default function AdminLayout() {
         <div className="sticky top-0 z-10 bg-[#1e293b] border-b border-slate-700/50 px-6 py-3 flex justify-between items-center">
           <GlobalSearch />
           <div className="flex items-center gap-4">
+            {/* Help Button */}
+            <button 
+              onClick={() => setShowHelp(true)}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors relative group"
+              title="מרכז עזרה"
+            >
+              <Book size={20} />
+              <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full"></span>
+            </button>
+
             {/* Notification Bell */}
             <NotificationBell />
           </div>
