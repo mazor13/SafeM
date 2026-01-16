@@ -1,159 +1,60 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase';
-import { useUIStore } from './store/uiStore';
-
-// Pages
-import Login from './pages/auth/Login';
-import Clients from './pages/admin/Clients';
-import SystemSettings from './pages/admin/SystemSettings';
-import Tasks from './pages/Tasks';
-import TaskDetails from './pages/tasks/TaskDetails';
-import Notifications from './pages/Notifications';
-
-// Equipment Pages
-import { InspectionsPage, EquipmentPage, FindingsPage } from './pages/admin/equipment';
-import EquipmentFormPage from './pages/admin/equipment/EquipmentFormPage';
-import InspectionRunner from './pages/admin/inspections/InspectionRunner'; // NEW
-
-// CRM Pages
-import { LeadsPage, LeadDetailPage } from './pages/admin/crm';
-
-// Safety Pages
-import { SafetyFilesPage } from './pages/admin/safety';
-
-// Reports Pages
-import { AnalyticsPage, InspectionHistoryPage, CompliancePage } from './pages/admin/reports';
-
-// Other Admin Pages
-import DashboardBI from './pages/admin/DashboardBI';
-import CommandCenter from './pages/admin/CommandCenter';
-import PendingApprovals from './pages/admin/PendingApprovals';
-import Finance from './pages/admin/Finance';
-import BrandingSettings from './pages/admin/BrandingSettings';
-import Templates from './pages/admin/Templates';
+import Login from './pages/auth/Login'; // CORRECT PATH FOUND
+import AdminDashboard from './pages/admin/CommandCenter';
+import ClientList from './pages/admin/ClientList';
 import Client360 from './pages/admin/Client360';
-import CreateClient from './pages/admin/CreateClient';
-import ProductManagement from './pages/admin/ProductManagement';
-
-// Documents
-import DocumentsListPage from './pages/admin/documents/DocumentsListPage';
-
-// Templates
-import TemplateDesigner from './pages/admin/templates/TemplateDesigner';
-
-// Layouts
+import EquipmentPage from './pages/admin/equipment/EquipmentPage';
+import EquipmentFormPage from './pages/admin/equipment/EquipmentFormPage';
+import InspectionRunner from './pages/admin/inspections/InspectionRunner';
+import TemplateManager from './pages/admin/templates/TemplateManager';
+import TemplateEditor from './pages/admin/templates/TemplateEditor';
+import GlobalCatalog from './pages/admin/GlobalCatalog';
 import AdminLayout from './layouts/AdminLayout';
+import AuthProvider, { useAuth } from './providers/AuthProvider';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const user = useUIStore((state) => state.user);
-  const loading = useUIStore((state) => state.loading);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">טוען...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="h-screen bg-slate-900 flex items-center justify-center text-white">טוען...</div>;
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
-};
+}
 
-function App() {
-  const setUser = useUIStore((state) => state.setUser);
-  const setLoading = useUIStore((state) => state.setLoading);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [setUser, setLoading]);
-
+export default function App() {
   return (
+    <AuthProvider>
       <Routes>
-        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
-
-        {/* Protected Routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <AdminLayout />
-            </ProtectedRoute>
-          }
-        >
-          {/* Home - Command Center */}
-          <Route index element={<CommandCenter />} />
-          <Route path="dashboard-bi" element={<DashboardBI />} />
+        
+        <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<AdminDashboard />} />
           
-          {/* CRM */}
-          <Route path="crm/leads" element={<LeadsPage />} />
-          <Route path="crm/leads/:leadId" element={<LeadDetailPage />} />
+          {/* Clients */}
+          <Route path="clients" element={<ClientList />} />
+          <Route path="clients/:clientId" element={<Client360 />} />
           
-          {/* Safety */}
-          <Route path="safety/files" element={<SafetyFilesPage />} />
-          
-          {/* Equipment - Phase 4 */}
+          {/* Equipment */}
           <Route path="equipment" element={<EquipmentPage />} />
           <Route path="equipment/new" element={<EquipmentFormPage />} />
           <Route path="equipment/:equipmentId" element={<EquipmentFormPage />} />
-          <Route path="findings" element={<FindingsPage />} />
-          <Route path="findings/:findingId" element={<EquipmentFormPage />} /> {/* Temp placeholder for finding details */}
-          <Route path="inspections" element={<InspectionsPage />} />
-          <Route path="inspections/new" element={<InspectionRunner />} /> {/* NEW ROUTE */}
-          <Route path="pending-approvals" element={<PendingApprovals />} />
           
-          {/* Reports - Phase 5 */}
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="reports/history" element={<InspectionHistoryPage />} />
-          <Route path="reports/compliance" element={<CompliancePage />} />
-          
-          {/* Clients */}
-          <Route path="clients" element={<Clients />} />
-          <Route path="clients/new" element={<CreateClient />} />
-          <Route path="clients/:clientId" element={<Client360 />} />
-          
-          {/* Tasks */}
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="tasks/:taskId" element={<TaskDetails />} />
+          {/* Catalog */}
+          <Route path="products" element={<GlobalCatalog />} />
+
+          {/* Inspections */}
+          <Route path="inspections" element={<InspectionRunner />} />
           
           {/* Templates */}
-          <Route path="templates" element={<Templates />} />
-          <Route path="templates/:templateId" element={<TemplateDesigner />} />
+          <Route path="templates" element={<TemplateManager />} />
+          <Route path="templates/new" element={<TemplateEditor />} />
+          <Route path="templates/:templateId" element={<TemplateEditor />} />
           
-          {/* Documents */}
-          <Route path="documents" element={<DocumentsListPage />} />
-          
-          {/* Products */}
-          <Route path="products" element={<ProductManagement />} />
-          
-          {/* Settings */}
-          <Route path="finance" element={<Finance />} />
-          <Route path="branding" element={<BrandingSettings />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="system" element={<SystemSettings />} />
-          <Route path="settings" element={<SystemSettings />} />
+          {/* Catch all */}
+          <Route path="*" element={<div className="p-10 text-white">עמוד לא נמצא (404)</div>} />
         </Route>
 
-        {/* Fallback */}
         <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
+    </AuthProvider>
   );
 }
-
-export default App;
