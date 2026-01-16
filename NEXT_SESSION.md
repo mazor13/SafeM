@@ -1,44 +1,49 @@
 # 🛡️ SafeM (AEGIS) - Status & Next Session
 
-## 📍 Project State (As of: 16/01/2026)
+## 📍 Project State (As of: 16/01/2026 18:30)
 | Component | Status | Notes |
 |-----------|--------|-------|
-| **Templates** | ✅ Stable | Split-brain fixed, CRUD working properly |
-| **Routing** | ✅ Stable | App.tsx routes align with Sidebar & Buttons |
-| **Equipment** | ✅ Stable | List view loads, Edit form populates correctly |
-| **Findings** | ✅ Stable | Navigation fixed, List view works |
-| **Inspections** | 🚧 Pending | Next major milestone |
+| **Equipment Form** | ✅ Working | Logic fixed, hierarchy updated, "Smart Location" added |
+| **Inspection Runner** | ⚠️ Partial | Wizard works, needs connection to real Inspection Engine |
+| **Data Hygiene** | 🚧 Planned | Need to move from free-text to Catalog & Site Hierarchy |
 
 ---
 
-## 🎯 Current Focus: Milestone #12 - Inspection Execution Engine
-**Objective:** Enable field inspectors to fill out a checklist based on a Template + Equipment context.
+## 🎯 Strategic Focus: Milestone 12 - Asset Lifecycle Engine
+**Objective:** Upgrade "Equipment" from a simple list to a full Lifecycle Management module.
 
-### 📋 To-Do List (Sprint 9)
-1.  **Create Inspection Runner Page:**
-    - [ ] Route: `/admin/inspections/new`
-    - [ ] Selection Wizard: Client -> Site -> Equipment -> Template
-2.  **Build "Filling Engine" (Mobile Friendly):**
-    - [ ] Render RJSF (React JSON Schema Form) in simplified mode
-    - [ ] Auto-save functionality
-    - [ ] Camera integration for findings
-3.  **Submission Logic:**
-    - [ ] Save to `inspections` collection
-    - [ ] Trigger PDF generation
-    - [ ] Update `nextInspectionDate` on Equipment
+### 📋 Work Plan (Next Steps)
+
+#### 1. 🏗️ Site Hierarchy (ניהול אתרים ומבנים) - Ref: #65
+* **Goal:** Replace free-text "Location" with structured hierarchy.
+* **Structure:** Client -> Site (Campus) -> Building -> Floor -> Room/Area.
+* **Action:** Create `sites` collection and UI for managing it.
+
+#### 2. 🏭 Global Product Catalog (קטלוג פריטים) - Ref: #91
+* **Goal:** Standardize equipment data (Manufacturer, Model, Specs).
+* **Structure:** `catalog_items` (Global) vs `local_products` (Tenant specific).
+* **Action:** Create Catalog UI and link Equipment Form to it.
+
+#### 3. 📂 Documents & Compliance (מסמכים ותקינה)
+* **Goal:** Manage external files (Inspector Reports, Lab Tests) with expiry dates.
+* **Action:** Add "Documents" tab to Equipment Form with upload & expiry logic.
+* **Automation:** Alert when document is about to expire.
+
+#### 4. 📜 History & Logbook (יומן חיים)
+* **Goal:** Track MTBF/MTTR and replacements.
+* **Action:** Create `equipment_logs` sub-collection. Record every status change.
 
 ---
 
-## 🛠️ Work Protocols
-1.  **Context:** Always read `TASKS.md` and `PROJECT_STATUS.md` first.
-2.  **Routing:** Do NOT invent new routes. Check `App.tsx` before creating links.
-3.  **Data:** Use `firestore` hooks provided in `phase4-equipment` or `hooks/`.
-4.  **UI:** Tailwind + Lucide icons. Keep RTL layout.
+## 🛠️ Current Technical Tasks (Immediate)
+1.  [x] Fix Equipment Form hierarchy (Client -> Domain -> Type).
+2.  [x] Fix `undefined` error in Firebase update.
+3.  [ ] **Create `sites` collection and management UI.** (Next Session)
+4.  [ ] **Refactor Equipment Form to use `sites` instead of text.** (Next Session)
 
 ---
 
-## 🔄 Recent Fixes (Sprint 8 Wrap-up)
-- Fixed `CommandCenter.tsx` links (Client creation, System Ledger).
-- Fixed `EquipmentFormPage.tsx` parameter reading (`id` vs `equipmentId`).
-- Fixed `FindingsPage.tsx` missing navigation logic.
-- Unified `Templates` collection usage.
+## 📝 GitHub Sync
+* **Working on:** Sprint 9
+* **Related Issues:** #91 (Catalog), #65 (Hierarchy), #71 (Scheduling)
+
