@@ -1,3 +1,8 @@
+#!/bin/bash
+
+echo "🔗 Rewiring App.tsx - CONNECTING ALL EXISTING PAGES..."
+
+cat > frontend/src/App.tsx << 'EOF'
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthProvider, { useAuth } from './providers/AuthProvider';
@@ -138,3 +143,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+EOF
+
+echo "🚀 Router fully connected. Building..."
+cd frontend && npm run build
