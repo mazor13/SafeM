@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { HelpCircle, Search, X, Box, Building2, MapPin, FileText, Clock, ArrowRight } from 'lucide-react';
+import { Search, X, Box, Building2, MapPin, FileText, Clock, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { firestore } from '../../firebase';

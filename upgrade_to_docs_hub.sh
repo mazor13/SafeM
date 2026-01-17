@@ -1,3 +1,8 @@
+#!/bin/bash
+
+echo "📚 Upgrading Help Center to Full Documentation Hub (Wiki Style)..."
+
+cat > frontend/src/pages/admin/help/HelpCenterPage.tsx << 'EOF'
 import React, { useState, useMemo } from 'react';
 import { 
   Book, Search, ChevronDown, ChevronRight, Layout, Shield, 
@@ -277,3 +282,9 @@ export default function HelpCenterPage() {
     </div>
   );
 }
+EOF
+
+echo "✅ Documentation Hub deployed successfully."
+cd frontend && npm run build
+cd ..
+firebase deploy --only hosting

@@ -73,7 +73,6 @@ export default function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="dashboard-bi" element={<DashboardBI />} />
           <Route path="cloud-hub" element={<CloudHub />} />
-          <Route path="help" element={<HelpCenterPage />} />
           
           {/* --- CRM --- */}
           {/* הלידים עובדים עם מודאל, אז אין צורך ב-route נפרד ל-new */}
