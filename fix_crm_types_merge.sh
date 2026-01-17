@@ -1,3 +1,8 @@
+#!/bin/bash
+
+echo "🚑 Merging Legacy Types with Enterprise Types to fix Build..."
+
+cat > frontend/src/types/crm.ts << 'EOF'
 import { Timestamp } from 'firebase/firestore';
 
 // ==========================================
@@ -159,3 +164,15 @@ export interface Contact {
   isPrimary: boolean;
   createdAt: any;
 }
+EOF
+
+echo "✅ Types Merged. Retrying Build..."
+cd frontend && npm run build
+
+if [ $? -eq 0 ]; then
+  echo "🚀 Build Success! Deploying..."
+  cd ..
+  firebase deploy --only hosting
+else
+  echo "❌ Build Failed again. Check logs."
+fi

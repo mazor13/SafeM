@@ -1,4 +1,8 @@
-import HelpCenterPage from './pages/admin/help/HelpCenterPage';
+#!/bin/bash
+
+echo "🔗 Performing Final Integration (Merging CRM + Full System)..."
+
+cat > frontend/src/App.tsx << 'EOF'
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthProvider, { useAuth } from './providers/AuthProvider';
@@ -8,9 +12,9 @@ import Login from './pages/auth/Login';
 // --- CRM (הגרסה המתוקנת עם המודאלים) ---
 import LeadsPage from './pages/admin/crm/LeadsPage';
 import LeadDetailPage from './pages/admin/crm/LeadDetailPage';
-import ContactsPage from './pages/admin/crm/ContactsPage';
+import Contacts from './pages/admin/crm/Contacts';
 import Activities from './pages/admin/crm/Activities';
-import OpportunitiesPage from './pages/admin/crm/OpportunitiesPage';
+import Opportunities from './pages/admin/crm/Opportunities';
 
 // --- ניהול לקוחות ---
 import AdminDashboard from './pages/admin/CommandCenter';
@@ -78,9 +82,9 @@ export default function App() {
           {/* הלידים עובדים עם מודאל, אז אין צורך ב-route נפרד ל-new */}
           <Route path="crm/leads" element={<LeadsPage />} /> 
           <Route path="crm/leads/:id" element={<LeadDetailPage />} />
-          <Route path="crm/contacts" element={<ContactsPage />} />
+          <Route path="crm/contacts" element={<Contacts />} />
           <Route path="crm/activities" element={<Activities />} />
-          <Route path="crm/opportunities" element={<OpportunitiesPage />} />
+          <Route path="crm/opportunities" element={<Opportunities />} />
 
           {/* --- לקוחות --- */}
           <Route path="clients" element={<ClientList />} />
@@ -135,3 +139,15 @@ export default function App() {
     </AuthProvider>
   );
 }
+EOF
+
+echo "🚀 System fully integrated. Building..."
+cd frontend && npm run build
+
+if [ $? -eq 0 ]; then
+  echo "✅ Build Successful. Deploying..."
+  cd ..
+  firebase deploy --only hosting
+else
+  echo "❌ Build Failed. Check logs."
+fi

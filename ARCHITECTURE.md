@@ -96,3 +96,20 @@
 4.  **Phase 4: Commercial:** חוזים, בילינג, ופורטל שותפים.
 5.  **Phase 5: Ecosystem:** API, Mobile App, Notifications.
 
+
+## 7. Enterprise Sales Logic (Added v1.1)
+Based on Expert Gap Analysis.
+
+### 7.1 Data Model Enhancements
+* **Opportunity Roles:** Multi-contact relationship mapping (Decision Maker, Blocker, Champion).
+* **Activity Tracking:** Full history of interactions (Calls, Emails, Meetings).
+* **Competitor Intelligence:** Tracking win/loss against specific competitors.
+
+### 7.2 Pipeline Governance
+* **BANT Qualification:** Mandatory scoring (Budget, Authority, Need, Timeline) before Discovery.
+* **Stage Gating:** Validation rules preventing stage progression without required data.
+* **Lost Analysis:** Mandatory reason codes for Closed-Lost deals.
+
+### 7.3 Forecasting
+* **Categories:** Pipeline, Best Case, Commit, Closed, Omitted.
+* **Logic:** Weighted probability based on stage + manual override with justification.
