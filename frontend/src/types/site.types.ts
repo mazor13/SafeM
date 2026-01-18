@@ -1,37 +1,92 @@
-/**
- * Site Hierarchy Types
- * מגדיר את מבנה האתרים, המבנים והאזורים של הלקוח.
- */
+import { Timestamp } from 'firebase/firestore';
+import { SafetyDomain } from './equipment.types';
 
-export type SiteType = 'campus' | 'building' | 'branch' | 'warehouse' | 'outdoor';
+export type SiteType = 
+  | 'campus' | 'building' | 'factory' | 'warehouse' | 'office' 
+  | 'retail' | 'educational' | 'healthcare' | 'residential' 
+  | 'outdoor' | 'mixed_use';
+
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface SiteContact {
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+}
 
 export interface Site {
   id: string;
+  tenantId: string;
   clientId: string;
-  name: string; // שם האתר (למשל: קמפוס חיפה)
+  name: string;
+  nameEn?: string;
+  code?: string;
   type: SiteType;
-  address?: string;
-  managerName?: string;
-  managerPhone?: string;
-  coordinates?: { lat: number; lng: number };
-  createdAt: Date;
-  updatedAt: Date;
+  description?: string;
+  image?: string;
+  
+  address: {
+    street: string;
+    city: string;
+    postalCode?: string;
+    country: string;
+    fullAddress?: string;
+  };
+  
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
+  
+  primaryContact: SiteContact;
+  secondaryContact?: SiteContact;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    available24h: boolean;
+  };
+  
+  safetyDomains: SafetyDomain[];
+  riskLevel: RiskLevel;
+  occupancy?: number;
+  
+  stats: {
+    buildingsCount: number;
+    equipmentCount: number;
+    lastInspectionDate?: Timestamp;
+    nextInspectionDate?: Timestamp;
+    openFindingsCount: number;
+    complianceScore: number;
+  };
+  
+  status: 'active' | 'inactive' | 'suspended' | 'archived';
+  
+  createdAt: Timestamp;
+  createdBy?: string;
+  updatedAt: Timestamp;
+  updatedBy?: string;
 }
 
 export interface Building {
   id: string;
   siteId: string;
-  name: string; // שם/מספר הבניין
+  name: string;
   floors: number;
   description?: string;
+  stats?: {
+    equipmentCount: number;
+    locationsCount: number;
+  };
 }
 
 export interface SiteArea {
   id: string;
-  buildingId: string; // אם זה בתוך בניין
-  siteId: string;     // שיוך לאתר אב
-  name: string;       // שם החדר/אזור (למשל: חדר שרתים ראשי)
-  floor?: string;     // קומה (יכול להיות "2", "-1", "גג")
-  accessCode?: string; // קוד כניסה (אופציונלי)
-  riskLevel?: 'low' | 'medium' | 'high';
+  buildingId: string;
+  siteId: string;
+  name: string;
+  floor?: string;
+  accessCode?: string;
+  riskLevel?: RiskLevel;
+  type: 'room' | 'corridor' | 'roof' | 'parking' | 'outdoor' | 'other';
 }

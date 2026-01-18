@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ArrowRight, Check, ChevronLeft, ChevronRight, 
-  MapPin, Shield, FileText, Save 
-} from 'lucide-react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, Shield, FileText, Save } from 'lucide-react';
 import { useEquipment } from '../../../hooks/useEquipment';
 import { useClients } from '../../../hooks/useClients';
 import { useSites } from '../../../hooks/useSites';
@@ -13,42 +10,32 @@ import { SAFETY_DOMAINS, EQUIPMENT_TYPES_BY_DOMAIN, SafetyDomain } from '../../.
 export default function EquipmentFormWizard() {
   const navigate = useNavigate();
   const { addEquipment, loading: submitting } = useEquipment();
-  
-  // Hooks for data
-  const { clients, fetchClients } = useClients();
+  const { clients } = useClients(); 
   const { sites, fetchSites } = useSites();
   
-  // State for Wizard
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     clientId: '',
     siteId: '',
     buildingId: '',
-    locationId: '', // Area ID
+    locationId: '',
     domain: 'fire_safety' as SafetyDomain,
     type: 'fire_extinguisher',
     name: '',
     serialNumber: '',
     manufacturer: '',
-    status: 'active' as const
+    status: 'active' as const,
+    tenantId: 'default'
   });
 
-  // Hierarchy Hook needs siteId to fetch buildings
   const { buildings, areas, fetchBuildings, fetchAreas } = useSiteHierarchy(formData.siteId);
 
-  // Load initial data
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
-  // Load sites when client changes
   useEffect(() => {
     if (formData.clientId) {
       fetchSites(formData.clientId);
     }
   }, [formData.clientId, fetchSites]);
 
-  // Load hierarchy when site changes
   useEffect(() => {
     if (formData.siteId) {
       fetchBuildings();
@@ -69,13 +56,14 @@ export default function EquipmentFormWizard() {
     }
   };
 
-  // Filtered lists
   const filteredSites = sites.filter(s => s.clientId === formData.clientId);
   const filteredAreas = areas.filter(a => !formData.buildingId || a.buildingId === formData.buildingId);
 
+  // Custom Input Class for Visibility
+  const inputClass = "w-full rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none";
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col" dir="rtl">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50 flex flex-col text-gray-900" dir="rtl">
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/admin/equipment')} className="text-gray-400 hover:text-gray-600">
@@ -86,83 +74,58 @@ export default function EquipmentFormWizard() {
             <p className="text-sm text-gray-500">שלב {step} מתוך 3</p>
           </div>
         </div>
-        
-        {/* Progress Bar */}
-        <div className="hidden md:flex items-center gap-2">
-          {[1, 2, 3].map(i => (
-            <div key={i} className={`flex items-center gap-2 ${step >= i ? 'text-blue-600' : 'text-gray-300'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
-                ${step === i ? 'bg-blue-600 text-white' : 
-                  step > i ? 'bg-blue-100 text-blue-600' : 'bg-gray-100'}`}
-              >
-                {step > i ? <Check className="w-5 h-5" /> : i}
-              </div>
-              <span className="text-sm font-medium">
-                {i === 1 ? 'מיקום' : i === 2 ? 'סיווג' : 'פרטים'}
-              </span>
-              {i < 3 && <div className="w-12 h-0.5 bg-gray-200" />}
-            </div>
-          ))}
-        </div>
+        {/* Progress steps visual hidden on mobile */}
       </div>
 
-      {/* Content */}
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 min-h-[400px]">
           
-          {/* STEP 1: Location */}
           {step === 1 && (
             <div className="space-y-6 fade-in">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <h2 className="text-xl font-bold">בחירת מיקום הציוד</h2>
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg"><MapPin className="w-6 h-6" /></div>
+                <h2 className="text-xl font-bold text-gray-900">בחירת מיקום הציוד</h2>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">לקוח *</label>
                   <select
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                    className={inputClass}
                     value={formData.clientId}
-                    onChange={e => setFormData({ ...formData, clientId: e.target.value, siteId: '', buildingId: '', locationId: '' })}
+                    onChange={e => setFormData({ ...formData, clientId: e.target.value })}
                   >
                     <option value="">בחר לקוח...</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">אתר *</label>
                   <select
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                    className={inputClass}
                     value={formData.siteId}
-                    onChange={e => setFormData({ ...formData, siteId: e.target.value, buildingId: '', locationId: '' })}
+                    onChange={e => setFormData({ ...formData, siteId: e.target.value })}
                     disabled={!formData.clientId}
                   >
                     <option value="">בחר אתר...</option>
                     {filteredSites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">מבנה (אופציונלי)</label>
+                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">מבנה</label>
                   <select
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                    className={inputClass}
                     value={formData.buildingId}
-                    onChange={e => setFormData({ ...formData, buildingId: e.target.value, locationId: '' })}
+                    onChange={e => setFormData({ ...formData, buildingId: e.target.value })}
                     disabled={!formData.siteId}
                   >
-                    <option value="">כללי / ללא מבנה</option>
+                    <option value="">כללי</option>
                     {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">אזור / חדר (אופציונלי)</label>
+                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">אזור</label>
                   <select
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                    className={inputClass}
                     value={formData.locationId}
                     onChange={e => setFormData({ ...formData, locationId: e.target.value })}
                     disabled={!formData.siteId}
@@ -175,97 +138,75 @@ export default function EquipmentFormWizard() {
             </div>
           )}
 
-          {/* STEP 2: Classification */}
           {step === 2 && (
             <div className="space-y-6 fade-in">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
-                  <Shield className="w-6 h-6" />
-                </div>
-                <h2 className="text-xl font-bold">סיווג הציוד</h2>
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-lg"><Shield className="w-6 h-6" /></div>
+                <h2 className="text-xl font-bold text-gray-900">סיווג הציוד</h2>
               </div>
-
-              <div>
+               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">תחום בטיחות</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {Object.entries(SAFETY_DOMAINS).map(([key, domain]) => (
                     <button
                       key={key}
-                      onClick={() => setFormData({ 
-                        ...formData, 
-                        domain: key as SafetyDomain,
-                        type: EQUIPMENT_TYPES_BY_DOMAIN[key as SafetyDomain]?.[0] || ''
-                      })}
-                      className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center gap-2
-                        ${formData.domain === key 
-                          ? 'border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600' 
-                          : 'border-gray-200 hover:border-gray-300 text-gray-600'}`}
+                      onClick={() => setFormData({ ...formData, domain: key as SafetyDomain })}
+                      className={`p-3 rounded-xl border text-center transition-all ${
+                        formData.domain === key 
+                        ? 'border-blue-600 bg-blue-50 text-blue-700' 
+                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                      }`}
                     >
-                      <span className="text-2xl">
-                        {/* כאן היינו שמים אייקון אמיתי, כרגע טקסט */}
-                        {key === 'fire_safety' ? '🔥' : key === 'electricity' ? '⚡' : '🔧'}
-                      </span>
                       <span className="text-sm font-medium">{domain.name}</span>
                     </button>
                   ))}
                 </div>
               </div>
-
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">סוג ציוד ספציפי</label>
-                <select
-                  className="w-full rounded-lg border-gray-300 focus:ring-blue-500 p-2.5"
-                  value={formData.type}
-                  onChange={e => setFormData({ ...formData, type: e.target.value })}
-                >
-                  {EQUIPMENT_TYPES_BY_DOMAIN[formData.domain]?.map(type => (
-                    <option key={type} value={type}>
-                      {type.replace(/_/g, ' ').toUpperCase()}
-                    </option>
-                  ))}
-                </select>
+              <div className="mt-4">
+                 <label className="block text-sm font-medium text-gray-700 mb-1">סוג ציוד</label>
+                 <select 
+                    className={inputClass}
+                    value={formData.type}
+                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+                 >
+                    {EQUIPMENT_TYPES_BY_DOMAIN[formData.domain]?.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                    ))}
+                 </select>
               </div>
             </div>
           )}
 
-          {/* STEP 3: Details */}
           {step === 3 && (
             <div className="space-y-6 fade-in">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <h2 className="text-xl font-bold">פרטים טכניים</h2>
+                <div className="p-3 bg-green-50 text-green-600 rounded-lg"><FileText className="w-6 h-6" /></div>
+                <h2 className="text-xl font-bold text-gray-900">פרטים טכניים</h2>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">שם הציוד / תיאור *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">שם הציוד *</label>
                   <input
                     type="text"
-                    required
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
-                    placeholder="למשל: מטף 6 ק״ג מסדרון ראשי"
+                    className={inputClass}
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
-
-                <div>
+                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">מספר סידורי</label>
                   <input
                     type="text"
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                    className={inputClass}
                     value={formData.serialNumber}
                     onChange={e => setFormData({ ...formData, serialNumber: e.target.value })}
                   />
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">יצרן / דגם</label>
+                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">יצרן</label>
                   <input
                     type="text"
-                    className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                    className={inputClass}
                     value={formData.manufacturer}
                     onChange={e => setFormData({ ...formData, manufacturer: e.target.value })}
                   />
@@ -275,36 +216,12 @@ export default function EquipmentFormWizard() {
           )}
 
         </div>
-
-        {/* Footer Navigation */}
-        <div className="mt-6 flex justify-between items-center">
-          <button
-            onClick={handleBack}
-            disabled={step === 1}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronRight className="w-5 h-5" />
-            חזור
-          </button>
-
+         <div className="mt-6 flex justify-between items-center">
+          <button onClick={handleBack} disabled={step === 1} className="px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 border border-gray-300">חזור</button>
           {step < 3 ? (
-            <button
-              onClick={handleNext}
-              disabled={step === 1 && !formData.siteId}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-            >
-              המשך לשלב הבא
-              <ChevronLeft className="w-5 h-5" />
-            </button>
+            <button onClick={handleNext} disabled={step === 1 && !formData.siteId} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">המשך</button>
           ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !formData.name}
-              className="flex items-center gap-2 px-8 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 disabled:opacity-50 transition-colors shadow-sm"
-            >
-              <Save className="w-5 h-5" />
-              {submitting ? 'שומר...' : 'סיים ושמור ציוד'}
-            </button>
+            <button onClick={handleSubmit} disabled={submitting || !formData.name} className="px-8 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700">שמור</button>
           )}
         </div>
       </div>

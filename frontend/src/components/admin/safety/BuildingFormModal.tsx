@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Building } from 'lucide-react';
+import { X, Save, Building, Layers, Type } from 'lucide-react';
 
 interface BuildingFormModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export default function BuildingFormModal({ isOpen, onClose, onSubmit }: Buildin
     setLoading(true);
     try {
       await onSubmit(formData);
-      setFormData({ name: '', floors: 1, description: '' }); // Reset
+      setFormData({ name: '', floors: 1, description: '' });
       onClose();
     } catch (error) {
       console.error(error);
@@ -31,54 +31,61 @@ export default function BuildingFormModal({ isOpen, onClose, onSubmit }: Buildin
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" dir="rtl">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-        <form onSubmit={handleSubmit}>
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Building className="w-6 h-6 text-blue-600" />
-              הוספת מבנה חדש
-            </h2>
-            <button type="button" onClick={onClose}><X className="w-5 h-5 text-gray-400" /></button>
-          </div>
+  const labelClass = "block text-sm font-medium text-slate-300 mb-2";
+  const inputClass = "w-full rounded-lg border border-slate-600 bg-slate-700/50 text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-slate-500";
 
-          <div className="p-6 space-y-4">
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" dir="rtl">
+      <div className="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-700 text-white animate-in fade-in zoom-in duration-200">
+        
+        <div className="flex items-center justify-between p-6 border-b border-slate-700 bg-slate-800">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Building className="w-6 h-6 text-blue-500" />
+            הוספת מבנה חדש
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white p-2 hover:bg-slate-700 rounded-full transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">שם המבנה / מספר *</label>
+              <label className={labelClass}><Type className="w-4 h-4 inline ml-1"/> שם המבנה / מספר</label>
               <input
                 required
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                className={inputClass}
                 placeholder="למשל: בניין 4 (מנהלה)"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">מספר קומות</label>
+              <label className={labelClass}><Layers className="w-4 h-4 inline ml-1"/> מספר קומות</label>
               <input
                 type="number"
                 min="1"
                 value={formData.floors}
                 onChange={e => setFormData({ ...formData, floors: parseInt(e.target.value) })}
-                className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">תיאור (אופציונלי)</label>
+              <label className={labelClass}>תיאור (אופציונלי)</label>
               <textarea
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="w-full rounded-lg border-gray-300 focus:ring-blue-500"
+                className={inputClass}
                 rows={3}
+                placeholder="הערות נוספות..."
               />
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="btn-secondary">ביטול</button>
-            <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 font-medium">
+          <div className="p-6 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-bold hover:bg-slate-700 transition-colors">ביטול</button>
+            <button type="submit" disabled={loading} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/30 flex items-center gap-2">
               <Save className="w-4 h-4" /> שמור מבנה
             </button>
           </div>

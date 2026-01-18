@@ -4,16 +4,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { firestore } from '../../../firebase';
 import { Site } from '../../../types/site.types';
 import { 
-  Activity, 
-  Building2, 
-  Shield, 
-  FileText, 
-  ArrowRight, 
-  MapPin, 
-  Phone, 
-  AlertTriangle
+  Activity, Building2, Shield, FileText, ArrowRight, MapPin, 
+  Phone, AlertTriangle, Mail, User
 } from 'lucide-react';
-// Import the new tab component
 import SiteLocationsTab from '../../../components/admin/safety/SiteLocationsTab';
 
 export default function SiteDetailPage() {
@@ -29,11 +22,8 @@ export default function SiteDetailPage() {
       try {
         const docRef = doc(firestore, 'sites', id);
         const docSnap = await getDoc(docRef);
-        
         if (docSnap.exists()) {
           setSite({ id: docSnap.id, ...docSnap.data() } as Site);
-        } else {
-          console.error('Site not found');
         }
       } catch (error) {
         console.error('Error fetching site:', error);
@@ -41,12 +31,11 @@ export default function SiteDetailPage() {
         setLoading(false);
       }
     };
-
     fetchSite();
   }, [id]);
 
-  if (loading) return <div className="p-8 text-center text-gray-500">טוען נתוני אתר...</div>;
-  if (!site) return <div className="p-8 text-center text-red-500">האתר לא נמצא או הוסר.</div>;
+  if (loading) return <div className="p-12 text-center text-slate-500">טוען נתוני אתר...</div>;
+  if (!site) return <div className="p-12 text-center text-red-500">האתר לא נמצא או הוסר.</div>;
 
   const tabs = [
     { id: 'overview', label: 'סקירה כללית', icon: Activity },
@@ -56,141 +45,174 @@ export default function SiteDetailPage() {
   ];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen space-y-6" dir="rtl">
-      {/* Header Navigation */}
-      <div>
-        <button 
-          onClick={() => navigate('/admin/safety/files')} 
-          className="flex items-center text-gray-500 hover:text-blue-600 transition-colors mb-4 text-sm font-medium"
-        >
-          <ArrowRight className="w-4 h-4 ml-1" />
-          חזרה לרשימת האתרים
-        </button>
-        
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{site.name}</h1>
-            <div className="flex items-center gap-4 mt-2 text-gray-500">
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                <span>{site.address?.street}, {site.address?.city}</span>
+    <div className="min-h-screen bg-slate-900 pb-12 text-white" dir="rtl">
+      
+      {/* Top Banner - Dark */}
+      <div className="bg-slate-800 border-b border-slate-700 shadow-lg">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+            <button 
+              onClick={() => navigate('/admin/safety/files')} 
+              className="flex items-center text-slate-400 hover:text-blue-400 transition-colors mb-6 text-sm font-medium"
+            >
+              <ArrowRight className="w-4 h-4 ml-1" />
+              חזרה לרשימת האתרים
+            </button>
+
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+              <div className="flex items-start gap-5">
+                <div className="p-5 bg-slate-700/50 rounded-2xl text-blue-400 border border-slate-600 shadow-inner">
+                   <Building2 className="w-10 h-10" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-extrabold text-white tracking-tight">{site.name}</h1>
+                  <div className="flex items-center gap-4 mt-2 text-slate-400 font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-4 h-4 text-slate-500" />
+                      <span>{site.address?.street || 'רחוב לא הוזן'}, {site.address?.city || 'עיר לא הוזנה'}</span>
+                    </div>
+                    <span className="text-slate-600">|</span>
+                    <div className="flex items-center gap-1.5 uppercase tracking-wide text-xs font-bold bg-slate-700 px-2 py-1 rounded text-slate-300 border border-slate-600">
+                      {site.type}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <span className="text-gray-300">|</span>
-              <div className="flex items-center gap-1">
-                <Building2 className="w-4 h-4" />
-                <span>{site.type}</span>
+              
+              <div className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 border shadow-sm
+                ${site.riskLevel === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' : 
+                  site.riskLevel === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 
+                  'bg-green-500/20 text-green-400 border-green-500/30'}`}
+              >
+                <AlertTriangle className="w-4 h-4" />
+                רמת סיכון: {site.riskLevel === 'high' ? 'גבוהה' : site.riskLevel === 'medium' ? 'בינונית' : 'נמוכה'}
               </div>
             </div>
-          </div>
-          
-          <div className={`px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2
-            ${site.riskLevel === 'high' ? 'bg-red-100 text-red-700' : 
-              site.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700' : 
-              'bg-green-100 text-green-700'}`}
-          >
-            <AlertTriangle className="w-4 h-4" />
-            רמת סיכון: {site.riskLevel === 'high' ? 'גבוהה' : site.riskLevel === 'medium' ? 'בינונית' : 'נמוכה'}
-          </div>
+            
+            {/* Tabs - Dark Style */}
+            <div className="flex gap-2 mt-8 overflow-x-auto no-scrollbar">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-t-xl font-bold text-sm transition-all border-b-2 relative top-[2px]
+                    ${activeTab === tab.id 
+                      ? 'bg-slate-900 border-blue-500 text-blue-400 z-10' 
+                      : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div className="bg-white rounded-t-xl border-b border-gray-200 px-4">
-        <div className="flex gap-6 overflow-x-auto">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 py-4 border-b-2 font-medium transition-colors whitespace-nowrap
-                ${activeTab === tab.id 
-                  ? 'border-blue-600 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab Content Area */}
-      <div className="bg-white rounded-b-xl shadow-sm p-6 min-h-[400px]">
+      {/* Content Area - Dark */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'overview' && (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Card: Primary Contact */}
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-blue-600" />
-                  איש קשר ראשי
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">שם מלא:</span>
-                    <span className="font-medium">{site.primaryContact?.name || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">תפקיד:</span>
-                    <span className="font-medium">{site.primaryContact?.role || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">טלפון:</span>
-                    <span className="font-medium" dir="ltr">{site.primaryContact?.phone || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">אימייל:</span>
-                    <span className="font-medium">{site.primaryContact?.email || '-'}</span>
-                  </div>
-                </div>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Contact Card */}
+            <div className="bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-700 hover:border-slate-600 transition-all h-fit">
+               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6 flex items-center gap-2">
+                  <Phone className="w-4 h-4" /> פרטי איש קשר ראשי
+               </h3>
+               
+               {site.primaryContact?.name ? (
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-full bg-slate-700 flex items-center justify-center text-blue-400 font-bold text-xl border border-slate-600">
+                            {site.primaryContact.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div className="font-bold text-white text-lg">{site.primaryContact.name}</div>
+                            <div className="text-slate-400 text-sm font-medium">{site.primaryContact.role || 'תפקיד לא הוגדר'}</div>
+                        </div>
+                    </div>
+                    <div className="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                        <div className="flex items-center gap-3 text-slate-300">
+                            <Phone className="w-4 h-4 text-slate-500" />
+                            <span dir="ltr" className="font-mono text-sm">{site.primaryContact.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-slate-300">
+                            <Mail className="w-4 h-4 text-slate-500" />
+                            <span className="text-sm">{site.primaryContact.email}</span>
+                        </div>
+                    </div>
+                 </div>
+               ) : (
+                 <div className="text-center py-8 text-slate-500 bg-slate-900/30 rounded-xl border border-dashed border-slate-700">
+                    <User className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    לא הוגדר איש קשר ראשי
+                 </div>
+               )}
+            </div>
 
-              {/* Card: Stats */}
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
-                <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-blue-600" />
-                  סטטוס תפעולי
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                    <div className="text-2xl font-bold text-gray-900">{site.stats?.buildingsCount || 0}</div>
-                    <div className="text-xs text-gray-500">מבנים</div>
+            {/* Stats Grid - Dark */}
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm group hover:border-blue-500/50 transition-all">
+                  <div className="text-slate-400 font-bold text-sm mb-1 flex justify-between">
+                    <span>ציוד באתר</span>
+                    <Shield className="w-4 h-4 text-slate-600 group-hover:text-blue-500 transition-colors"/>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                    <div className="text-2xl font-bold text-gray-900">{site.stats?.equipmentCount || 0}</div>
-                    <div className="text-xs text-gray-500">פריטי ציוד</div>
+                  <div className="text-4xl font-black text-white tracking-tight">{site.stats?.equipmentCount || 0}</div>
+                  <div className="mt-3 text-xs text-green-400 font-bold bg-green-500/10 inline-block px-2.5 py-1 rounded-md border border-green-500/20">פעיל ותקין</div>
+               </div>
+               
+               <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm group hover:border-blue-500/50 transition-all">
+                  <div className="text-slate-400 font-bold text-sm mb-1 flex justify-between">
+                    <span>מבנים ומתחמים</span>
+                    <Building2 className="w-4 h-4 text-slate-600 group-hover:text-blue-500 transition-colors"/>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                    <div className="text-2xl font-bold text-red-600">{site.stats?.openFindingsCount || 0}</div>
-                    <div className="text-xs text-gray-500">ליקויים פתוחים</div>
+                  <div className="text-4xl font-black text-white tracking-tight">{site.stats?.buildingsCount || 0}</div>
+               </div>
+
+               <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm group hover:border-blue-500/50 transition-all">
+                  <div className="text-slate-400 font-bold text-sm mb-1 flex justify-between">
+                    <span>ציון ציות</span>
+                    <Activity className="w-4 h-4 text-slate-600 group-hover:text-blue-500 transition-colors"/>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm text-center">
-                    <div className="text-2xl font-bold text-green-600">{site.stats?.complianceScore || 0}%</div>
-                    <div className="text-xs text-gray-500">ציון ציות</div>
+                  <div className="flex items-end gap-2">
+                      <div className="text-4xl font-black text-blue-400 tracking-tight">{site.stats?.complianceScore || 0}%</div>
                   </div>
-                </div>
-              </div>
+                  <div className="w-full bg-slate-700 h-2.5 rounded-full mt-4 overflow-hidden">
+                      <div className="bg-blue-500 h-full rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" style={{ width: `${site.stats?.complianceScore || 0}%` }}></div>
+                  </div>
+               </div>
+
+               <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-sm group hover:border-red-500/50 transition-all">
+                  <div className="text-slate-400 font-bold text-sm mb-1 flex justify-between">
+                    <span>ליקויים פתוחים</span>
+                    <AlertTriangle className="w-4 h-4 text-slate-600 group-hover:text-red-500 transition-colors"/>
+                  </div>
+                  <div className="text-4xl font-black text-red-500 tracking-tight">{site.stats?.openFindingsCount || 0}</div>
+                  <div className="mt-3 text-xs text-red-400 font-bold bg-red-500/10 inline-block px-2.5 py-1 rounded-md border border-red-500/20">דורש טיפול מיידי</div>
+               </div>
             </div>
           </div>
         )}
 
-        {/* ✅ NEW: Connected Locations Tab */}
         {activeTab === 'locations' && (
-          <SiteLocationsTab siteId={site.id} />
+          <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <SiteLocationsTab siteId={site.id} />
+          </div>
         )}
 
         {activeTab === 'equipment' && (
-          <div className="text-center py-12 text-gray-400">
-            <Shield className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <h3 className="text-lg font-medium text-gray-900">ניהול ציוד</h3>
-            <p>רכיב זה יפותח במשימה הבאה (Equipment Registry).</p>
-          </div>
-        )}
-        
-        {activeTab === 'inspections' && (
-          <div className="text-center py-12 text-gray-400">
-            <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <h3 className="text-lg font-medium text-gray-900">היסטוריית מבדקים</h3>
-            <p>יוצג כאן יומן מבדקים מלא.</p>
+          <div className="bg-slate-800 rounded-2xl border border-slate-700 p-16 text-center">
+            <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Shield className="w-10 h-10 text-slate-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">ניהול ציוד ונכסים</h3>
+            <p className="text-slate-400 max-w-md mx-auto mb-8">
+              צפה ברשימת הציוד המלאה המשויכת לאתר זה.
+            </p>
+            <button 
+                onClick={() => navigate('/admin/equipment')}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all"
+            >
+                עבור לרשימת הציוד
+            </button>
           </div>
         )}
       </div>
