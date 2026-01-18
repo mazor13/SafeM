@@ -18,7 +18,7 @@
 
 ### 🔧 Week 3-4: Equipment Registry (Gap #2)
 - [x] **Types Update:** Add Equipment Types enums to `equipment.types.ts`.
-- [ ] **Page:** Create `EquipmentListPage` with filtering (Site/Domain).
+- [x] **Page:** Create `EquipmentListPage` with filtering (Site/Domain).
 - [x] **Detail View:** Create `EquipmentDetailPage` (Info + History).
 - [ ] **Wizard:** Build `EquipmentFormWizard` for complex addition.
 - [ ] **Import:** Implement Excel import for bulk equipment.
