@@ -20,8 +20,9 @@ import CreateClient from './pages/admin/CreateClient';
 import ClientSettings from './pages/admin/ClientSettings';
 
 // --- ציוד ומוצרים ---
-import EquipmentListPage from './pages/admin/equipment/EquipmentListPage'; // ✅ CHANGED
-import EquipmentFormPage from './pages/admin/equipment/EquipmentFormPage';
+import EquipmentListPage from './pages/admin/equipment/EquipmentListPage';
+import EquipmentFormWizard from './pages/admin/equipment/EquipmentFormWizard'; // ✅ NEW IMPORT
+import EquipmentFormPage from './pages/admin/equipment/EquipmentFormPage'; // לשמירה אחורה בינתיים
 import GlobalCatalog from './pages/admin/GlobalCatalog';
 import ProductManagement from './pages/admin/ProductManagement';
 import FindingsPage from './pages/admin/equipment/FindingsPage';
@@ -89,8 +90,8 @@ export default function App() {
           <Route path="client-settings" element={<ClientSettings />} />
 
           {/* Equipment */}
-          <Route path="equipment" element={<EquipmentListPage />} /> {/* ✅ UPDATED */}
-          <Route path="equipment/new" element={<EquipmentFormPage />} />
+          <Route path="equipment" element={<EquipmentListPage />} />
+          <Route path="equipment/new" element={<EquipmentFormWizard />} /> {/* ✅ UPDATED */}
           <Route path="equipment/:equipmentId" element={<EquipmentFormPage />} />
           <Route path="products" element={<GlobalCatalog />} />
           <Route path="product-management" element={<ProductManagement />} />

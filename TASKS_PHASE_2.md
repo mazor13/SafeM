@@ -20,7 +20,7 @@
 - [x] **Types Update:** Add Equipment Types enums to `equipment.types.ts`.
 - [x] **Page:** Create `EquipmentListPage` with filtering (Site/Domain).
 - [x] **Detail View:** Create `EquipmentDetailPage` (Info + History).
-- [ ] **Wizard:** Build `EquipmentFormWizard` for complex addition.
+- [x] **Wizard:** Build `EquipmentFormWizard` for complex addition.
 - [ ] **Import:** Implement Excel import for bulk equipment.
 - [x] **Hook:** Implement `useEquipment` hook.
 - [ ] **Logic:** Implement status workflow (New -> Active -> Expired).
