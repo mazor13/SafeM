@@ -11,7 +11,7 @@
 - [x] **Types Update:** Update `site.types.ts` with extended fields (contact, safety domains, stats).
 - [x] **Hook:** Implement `useSites` hook (fetch, filter, CRUD).
 - [x] **Page Refactor:** Rewrite `SafetyFilesPage.tsx` using `DynamicTable`.
-- [ ] **Detail View:** Create `SiteDetailPage` with tabs structure.
+- [x] **Detail View:** Create `SiteDetailPage` with tabs structure.
 - [ ] **Forms:** Build `SiteFormModal` (Add/Edit Site).
 - [ ] **Hierarchy:** Build `BuildingFormModal` & `AreaFormModal`.
 - [ ] **Security:** Update Firestore rules for Sites collection.
@@ -19,7 +19,7 @@
 ### 🔧 Week 3-4: Equipment Registry (Gap #2)
 - [x] **Types Update:** Add Equipment Types enums to `equipment.types.ts`.
 - [ ] **Page:** Create `EquipmentListPage` with filtering (Site/Domain).
-- [ ] **Detail View:** Create `EquipmentDetailPage` (Info + History).
+- [x] **Detail View:** Create `EquipmentDetailPage` (Info + History).
 - [ ] **Wizard:** Build `EquipmentFormWizard` for complex addition.
 - [ ] **Import:** Implement Excel import for bulk equipment.
 - [x] **Hook:** Implement `useEquipment` hook.
@@ -39,7 +39,7 @@
 
 ### ⚠️ Week 7-8: Findings & Tasks (Gap #4)
 - [ ] **List View:** Create `FindingsListPage` with severity filters.
-- [ ] **Detail View:** Create `FindingDetailPage` with lifecycle actions.
+- [x] **Detail View:** Create `FindingDetailPage` with lifecycle actions.
 - [ ] **Risk:** Implement `RiskAssessmentForm` (Matrix).
 - [ ] **Automation:** Auto-create Tasks from Findings.
 - [x] **Hook:** Implement `useFindings` hook.

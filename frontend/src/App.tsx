@@ -30,6 +30,7 @@ import PendingApprovals from './pages/admin/PendingApprovals';
 
 // --- בטיחות ---
 import SafetyFilesPage from './pages/admin/safety/SafetyFilesPage';
+import SiteDetailPage from './pages/admin/safety/SiteDetailPage'; // ✅ NEW IMPORT
 
 // --- תפעול, דוחות וטפסים ---
 import InspectionRunner from './pages/admin/inspections/InspectionRunner';
@@ -76,7 +77,6 @@ export default function App() {
           <Route path="help" element={<HelpCenterPage />} />
           
           {/* --- CRM --- */}
-          {/* הלידים עובדים עם מודאל, אז אין צורך ב-route נפרד ל-new */}
           <Route path="crm/leads" element={<LeadsPage />} /> 
           <Route path="crm/leads/:id" element={<LeadDetailPage />} />
           <Route path="crm/contacts" element={<ContactsPage />} />
@@ -100,6 +100,7 @@ export default function App() {
 
           {/* --- בטיחות --- */}
           <Route path="safety/files" element={<SafetyFilesPage />} />
+          <Route path="safety/sites/:id" element={<SiteDetailPage />} /> {/* ✅ NEW ROUTE */}
           
           {/* --- תפעול ודוחות --- */}
           <Route path="inspections" element={<InspectionRunner />} />
