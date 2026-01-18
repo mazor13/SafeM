@@ -13,7 +13,7 @@
 - [x] **Page Refactor:** Rewrite `SafetyFilesPage.tsx` using `DynamicTable`.
 - [x] **Detail View:** Create `SiteDetailPage` with tabs structure.
 - [x] **Forms:** Build `SiteFormModal` (Add/Edit Site).
-- [ ] **Hierarchy:** Build `BuildingFormModal` & `AreaFormModal`.
+- [x] **Hierarchy:** Build `BuildingFormModal` & `AreaFormModal`.
 - [ ] **Security:** Update Firestore rules for Sites collection.
 
 ### 🔧 Week 3-4: Equipment Registry (Gap #2)
