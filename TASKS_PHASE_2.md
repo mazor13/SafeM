@@ -10,7 +10,7 @@
 ### 🏗️ Week 1-2: Sites & Locations (Gap #1)
 - [x] **Types Update:** Update `site.types.ts` with extended fields (contact, safety domains, stats).
 - [x] **Hook:** Implement `useSites` hook (fetch, filter, CRUD).
-- [ ] **Page Refactor:** Rewrite `SafetyFilesPage.tsx` using `DynamicTable`.
+- [x] **Page Refactor:** Rewrite `SafetyFilesPage.tsx` using `DynamicTable`.
 - [ ] **Detail View:** Create `SiteDetailPage` with tabs structure.
 - [ ] **Forms:** Build `SiteFormModal` (Add/Edit Site).
 - [ ] **Hierarchy:** Build `BuildingFormModal` & `AreaFormModal`.
