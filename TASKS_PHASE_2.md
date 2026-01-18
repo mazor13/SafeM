@@ -9,7 +9,7 @@
 
 ### 🏗️ Week 1-2: Sites & Locations (Gap #1)
 - [x] **Types Update:** Update `site.types.ts` with extended fields (contact, safety domains, stats).
-- [ ] **Hook:** Implement `useSites` hook (fetch, filter, CRUD).
+- [x] **Hook:** Implement `useSites` hook (fetch, filter, CRUD).
 - [ ] **Page Refactor:** Rewrite `SafetyFilesPage.tsx` using `DynamicTable`.
 - [ ] **Detail View:** Create `SiteDetailPage` with tabs structure.
 - [ ] **Forms:** Build `SiteFormModal` (Add/Edit Site).
@@ -22,7 +22,7 @@
 - [ ] **Detail View:** Create `EquipmentDetailPage` (Info + History).
 - [ ] **Wizard:** Build `EquipmentFormWizard` for complex addition.
 - [ ] **Import:** Implement Excel import for bulk equipment.
-- [ ] **Hook:** Implement `useEquipment` hook.
+- [x] **Hook:** Implement `useEquipment` hook.
 - [ ] **Logic:** Implement status workflow (New -> Active -> Expired).
 
 ---
@@ -34,7 +34,7 @@
 - [ ] **Templates:** Create `TemplateBuilderPage` and `TemplateListPage`.
 - [ ] **Runner:** Build `InspectionFormPage` (The actual audit screen).
 - [ ] **Components:** Implement `SignatureCanvas` component.
-- [ ] **Hook:** Implement `useInspections` hook.
+- [x] **Hook:** Implement `useInspections` hook.
 - [ ] **Logic:** Connect Templates to Inspection Runner.
 
 ### ⚠️ Week 7-8: Findings & Tasks (Gap #4)
@@ -42,7 +42,7 @@
 - [ ] **Detail View:** Create `FindingDetailPage` with lifecycle actions.
 - [ ] **Risk:** Implement `RiskAssessmentForm` (Matrix).
 - [ ] **Automation:** Auto-create Tasks from Findings.
-- [ ] **Hook:** Implement `useFindings` hook.
+- [x] **Hook:** Implement `useFindings` hook.
 
 ---
 
@@ -53,7 +53,7 @@
 - [ ] **Calendar:** Create `ScheduleCalendarPage`.
 - [ ] **Rules:** Implement Scheduling Rules Engine.
 - [ ] **Automation:** Job for `Overdue` detection and alerts.
-- [ ] **Hook:** Implement `useSchedule` hook.
+- [x] **Hook:** Implement `useSchedule` hook.
 
 ### 📈 Week 11-12: Reports & Dashboard (Gap #8)
 - [ ] **Dashboard:** Enhanced `SafetyDashboard` with new KPIs.
