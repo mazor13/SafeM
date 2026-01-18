@@ -11,9 +11,10 @@ import {
   ArrowRight, 
   MapPin, 
   Phone, 
-  Mail,
   AlertTriangle
 } from 'lucide-react';
+// Import the new tab component
+import SiteLocationsTab from '../../../components/admin/safety/SiteLocationsTab';
 
 export default function SiteDetailPage() {
   const { id } = useParams();
@@ -59,7 +60,7 @@ export default function SiteDetailPage() {
       {/* Header Navigation */}
       <div>
         <button 
-          onClick={() => navigate('/admin/safety')} 
+          onClick={() => navigate('/admin/safety/files')} 
           className="flex items-center text-gray-500 hover:text-blue-600 transition-colors mb-4 text-sm font-medium"
         >
           <ArrowRight className="w-4 h-4 ml-1" />
@@ -172,19 +173,16 @@ export default function SiteDetailPage() {
           </div>
         )}
 
+        {/* ✅ NEW: Connected Locations Tab */}
         {activeTab === 'locations' && (
-          <div className="text-center py-12 text-gray-400">
-            <Building2 className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <h3 className="text-lg font-medium text-gray-900">ניהול מבנים ואזורים</h3>
-            <p>רכיב זה יפותח במשימה הבאה (Hierarchy).</p>
-          </div>
+          <SiteLocationsTab siteId={site.id} />
         )}
 
         {activeTab === 'equipment' && (
           <div className="text-center py-12 text-gray-400">
             <Shield className="w-16 h-16 mx-auto mb-4 opacity-20" />
             <h3 className="text-lg font-medium text-gray-900">ניהול ציוד</h3>
-            <p>רכיב זה יפותח בשלב Equipment Registry.</p>
+            <p>רכיב זה יפותח במשימה הבאה (Equipment Registry).</p>
           </div>
         )}
         
