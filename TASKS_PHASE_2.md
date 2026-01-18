@@ -12,7 +12,7 @@
 - [x] **Hook:** Implement `useSites` hook (fetch, filter, CRUD).
 - [x] **Page Refactor:** Rewrite `SafetyFilesPage.tsx` using `DynamicTable`.
 - [x] **Detail View:** Create `SiteDetailPage` with tabs structure.
-- [ ] **Forms:** Build `SiteFormModal` (Add/Edit Site).
+- [x] **Forms:** Build `SiteFormModal` (Add/Edit Site).
 - [ ] **Hierarchy:** Build `BuildingFormModal` & `AreaFormModal`.
 - [ ] **Security:** Update Firestore rules for Sites collection.
 
