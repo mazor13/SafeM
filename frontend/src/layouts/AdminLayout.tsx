@@ -1,8 +1,9 @@
+import LegalConsentModal from '../components/legal/LegalConsentModal';
 import React, { useState, useEffect } from 'react';
 import { OnboardingWizard } from '../components/onboarding';
 import { GlobalSearch } from '../components/search';
 import { NotificationBell } from '../components/notifications';
-import HelpCenter from '../components/HelpCenter'; // Import HelpCenter
+import HelpCenter from '../components/HelpCenter';
 import { Outlet, NavLink, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../providers/AuthProvider';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -35,7 +36,7 @@ import {
   Cloud,
   Zap,
   CheckSquare,
-  Book // Added Book icon
+  Book
 } from 'lucide-react';
 
 interface NavItem {
@@ -52,7 +53,7 @@ export default function AdminLayout() {
   const [expandedSections, setExpandedSections] = useState<string[]>(['crm', 'safety', 'equipment', 'projects', 'reports']);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
-  const [showHelp, setShowHelp] = useState<boolean>(false); // Help Center State
+  const [showHelp, setShowHelp] = useState<boolean>(false);
 
   // Fetch pending approvals count
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function AdminLayout() {
       }
     };
     fetchPendingCount();
-    const interval = setInterval(fetchPendingCount, 60000); // Refresh every minute
+    const interval = setInterval(fetchPendingCount, 60000);
     return () => clearInterval(interval);
   }, []);
   
@@ -90,10 +91,10 @@ export default function AdminLayout() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0f172a]">
+      <div className="h-screen flex items-center justify-center bg-[#0E1A35]">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
-          <span className="text-slate-400 text-sm">טוען...</span>
+          <div className="animate-spin w-10 h-10 border-4 border-[#00D8FF] border-t-transparent rounded-full"></div>
+          <span className="text-[#A9B3C1] text-sm">טוען...</span>
         </div>
       </div>
     );
@@ -130,7 +131,6 @@ export default function AdminLayout() {
     { name: 'הדרכות', to: '/admin/safety/training', icon: GraduationCap },
   ];
 
-  // Phase 4 - Equipment Management
   const equipmentNavigation: NavItem[] = [
     { name: 'ציוד', to: '/admin/equipment', icon: Box },
     { name: 'ממצאים', to: '/admin/findings', icon: AlertTriangle },
@@ -138,12 +138,10 @@ export default function AdminLayout() {
     { name: 'ממתין לאישור', to: '/admin/pending-approvals', icon: Clock, badge: pendingCount },
   ];
 
-  // Phase 6 - Project Management
   const projectNavigation: NavItem[] = [
     { name: 'משימות', to: '/admin/tasks', icon: CheckSquare },
   ];
 
-  // Phase 5 - Reports & Analytics
   const reportsNavigation: NavItem[] = [
     { name: 'אנליטיקות', to: '/admin/analytics', icon: PieChart },
     { name: 'היסטוריית בדיקות', to: '/admin/reports/history', icon: History },
@@ -158,50 +156,49 @@ export default function AdminLayout() {
     { name: 'מוצרים', to: '/admin/products', icon: Package },
     { name: 'מיתוג', to: '/admin/branding', icon: Palette },
     { name: 'אוטומציות', to: '/admin/automation', icon: Zap },
+    { name: 'בקרה וניהול הצהרות משתמש', to: '/admin/users', icon: Users },
     { name: 'הגדרות', to: '/admin/settings', icon: Settings },
   ];
 
-  const NavSection = ({ title, items, sectionKey, color = 'indigo' }: { title: string; items: NavItem[]; sectionKey: string; color?: string }) => {
+  const NavSection = ({ title, items, sectionKey, color = 'cyan' }: { title: string; items: NavItem[]; sectionKey: string; color?: string }) => {
     const isExpanded = expandedSections.includes(sectionKey);
     
-    const colorClasses: Record<string, string> = {
-      indigo: 'bg-indigo-600 shadow-indigo-900/50',
-      emerald: 'bg-emerald-600 shadow-emerald-900/50',
-      cyan: 'bg-cyan-600 shadow-cyan-900/50',
-      amber: 'bg-amber-600 shadow-amber-900/50',
-      rose: 'bg-rose-600 shadow-rose-900/50',
-      purple: 'bg-purple-600 shadow-purple-900/50',
-    };
-
     return (
       <div className="mb-2">
         <button
           onClick={() => toggleSection(sectionKey)}
-          className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-[#6B7C93] uppercase tracking-wider hover:text-[#00D8FF] transition-colors"
         >
           {title}
-          <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
         </button>
-        <div className={`overflow-hidden transition-all duration-200 ${isExpanded ? 'max-h-96' : 'max-h-0'}`}>
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
           {items.map((item) => (
             <NavLink
               key={item.name}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `group flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 mx-2 ${
+                `group flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 mx-2 relative ${
                   isActive
-                    ? `${colorClasses[color]} text-white shadow-lg`
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-[rgba(0,216,255,0.12)] text-[#00D8FF] shadow-[0_0_20px_rgba(0,216,255,0.3)] border-r-2 border-[#00D8FF]'
+                    : 'text-[#A9B3C1] hover:bg-[rgba(0,216,255,0.05)] hover:text-white'
                 }`
               }
             >
-              <item.icon className="ml-3 h-4 w-4" />
-              {item.name}
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className="mr-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  {item.badge}
-                </span>
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00D8FF] rounded-full shadow-[0_0_10px_rgba(0,216,255,0.8)]"></div>
+                  )}
+                  <item.icon className={`ml-3 h-4 w-4 ${isActive ? 'drop-shadow-[0_0_8px_rgba(0,216,255,0.8)]' : ''}`} />
+                  {item.name}
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className="mr-auto bg-[#00D8FF] text-[#0E1A35] text-xs font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(0,216,255,0.5)]">
+                      {item.badge}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           ))}
@@ -221,7 +218,7 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-[#0f172a] overflow-hidden font-sans" dir="rtl">
+    <div className="flex h-screen bg-[#0E1A35] overflow-hidden font-sans" dir="rtl">
       
       {/* Onboarding Wizard */}
       {showOnboarding && (
@@ -236,29 +233,29 @@ export default function AdminLayout() {
       <HelpCenter isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
       {/* Sidebar */}
-      <aside className="w-72 bg-[#0f172a] text-white flex flex-col flex-shrink-0 border-l border-slate-800/50 z-50">
+      <aside className="w-72 bg-[#0E1A35] text-white flex flex-col flex-shrink-0 border-l border-[rgba(0,216,255,0.15)] z-50 shadow-[0_0_30px_rgba(0,216,255,0.1)]">
         
         {/* Logo */}
-        <div className="h-20 flex items-center px-6 border-b border-slate-800/50">
+        <div className="h-20 flex items-center px-6 border-b border-[rgba(0,216,255,0.15)]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/30">
-              <Shield size={22} className="text-white" />
+            <div className="w-10 h-10 bg-[#00D8FF] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(0,216,255,0.5)]">
+              <Shield size={22} className="text-[#0E1A35]" />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-wider text-white">AEGIS</h1>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Admin Console</p>
+              <h1 className="text-xl font-black tracking-wider text-white drop-shadow-[0_0_10px_rgba(0,216,255,0.3)]">AEGIS</h1>
+              <p className="text-[10px] text-[#6B7C93] uppercase tracking-widest">Intelligence Console</p>
             </div>
           </div>
         </div>
 
         {/* User Card */}
-        <div className="p-4 mx-4 mt-6 bg-slate-800/30 rounded-2xl border border-slate-700/50 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-sm shadow-lg">
+        <div className="p-4 mx-4 mt-6 bg-[#1C2435] rounded-2xl border border-[rgba(0,216,255,0.2)] flex items-center gap-3 shadow-[0_0_15px_rgba(0,216,255,0.1)]">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#00D8FF] to-[#0EA5E9] flex items-center justify-center font-bold text-sm shadow-[0_0_15px_rgba(0,216,255,0.4)] text-[#0E1A35]">
             {user?.firstName?.[0] || 'U'}
           </div>
           <div className="overflow-hidden flex-1">
             <p className="text-sm font-bold truncate text-white">{user?.firstName || 'User'}</p>
-            <p className="text-xs text-indigo-400 truncate">Super User</p>
+            <p className="text-xs text-[#00D8FF] truncate">Super User</p>
           </div>
         </div>
 
@@ -267,60 +264,68 @@ export default function AdminLayout() {
           
           {/* Main Navigation */}
           <div className="mb-4">
-            <p className="px-4 py-2 text-xs font-bold text-slate-500 uppercase tracking-wider">ראשי</p>
+            <p className="px-4 py-2 text-xs font-bold text-[#6B7C93] uppercase tracking-wider">ראשי</p>
             {mainNavigation.map((item) => (
               <NavLink
                 key={item.name}
                 to={item.to}
                 end={item.end}
                 className={({ isActive }) =>
-                  `group flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 mx-2 ${
+                  `group flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 mx-2 relative ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-[rgba(0,216,255,0.12)] text-[#00D8FF] shadow-[0_0_20px_rgba(0,216,255,0.3)] border-r-2 border-[#00D8FF]'
+                      : 'text-[#A9B3C1] hover:bg-[rgba(0,216,255,0.05)] hover:text-white'
                   }`
                 }
               >
-                <item.icon className="ml-3 h-4 w-4" />
-                {item.name}
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00D8FF] rounded-full shadow-[0_0_10px_rgba(0,216,255,0.8)]"></div>
+                    )}
+                    <item.icon className={`ml-3 h-4 w-4 ${isActive ? 'drop-shadow-[0_0_8px_rgba(0,216,255,0.8)]' : ''}`} />
+                    {item.name}
+                  </>
+                )}
               </NavLink>
             ))}
           </div>
 
           {/* Sections */}
-          <NavSection title="CRM - מכירות" items={crmNavigation} sectionKey="crm" color="amber" />
-          <NavSection title="בטיחות" items={safetyNavigation} sectionKey="safety" color="rose" />
-          <NavSection title="ניהול ציוד" items={equipmentNavigation} sectionKey="equipment" color="emerald" />
-          <NavSection title="פרויקטים" items={projectNavigation} sectionKey="projects" color="purple" />
-          <NavSection title="דוחות" items={reportsNavigation} sectionKey="reports" color="cyan" />
+          <NavSection title="CRM - מכירות" items={crmNavigation} sectionKey="crm" />
+          <NavSection title="בטיחות" items={safetyNavigation} sectionKey="safety" />
+          <NavSection title="ניהול ציוד" items={equipmentNavigation} sectionKey="equipment" />
+          <NavSection title="פרויקטים" items={projectNavigation} sectionKey="projects" />
+          <NavSection title="דוחות" items={reportsNavigation} sectionKey="reports" />
           <NavSection title="ניהול" items={managementNavigation} sectionKey="management" />
           
         </nav>
 
         {/* Logout */}
-        <div className="p-4 border-t border-slate-800/50">
+        <div className="p-4 border-t border-[rgba(0,216,255,0.15)]">
           <button 
             onClick={handleLogout} 
-            className="w-full flex items-center justify-center gap-2 text-sm text-rose-400 hover:text-white hover:bg-rose-500/20 p-3 rounded-xl transition-all font-bold"
+            className="w-full flex items-center justify-center gap-2 text-sm text-[#FF6B6B] hover:text-white hover:bg-[rgba(255,107,107,0.15)] p-3 rounded-xl transition-all font-bold border border-[rgba(255,107,107,0.2)] hover:border-[rgba(255,107,107,0.4)]"
           >
             <LogOut size={18} /> התנתק
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-[#0f172a] relative">
+      <LegalConsentModal />
+      <main className="flex-1 overflow-y-auto bg-[#0E1A35] relative">
         {/* Top Header Bar */}
-        <div className="sticky top-0 z-10 bg-[#1e293b] border-b border-slate-700/50 px-6 py-3 flex justify-between items-center">
+        <div className="sticky top-0 z-10 bg-[#1C2435] border-b border-[rgba(0,216,255,0.2)] px-6 py-3 flex justify-between items-center shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
           <GlobalSearch />
           <div className="flex items-center gap-4">
             {/* Help Button */}
             <button 
               onClick={() => navigate('/admin/help')}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors relative group"
+              className="p-2 text-[#A9B3C1] hover:text-[#00D8FF] hover:bg-[rgba(0,216,255,0.1)] rounded-lg transition-colors relative group"
               title="מרכז עזרה"
             >
               <Book size={20} />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-emerald-500 rounded-full"></span>
+              <span className="absolute top-0 right-0 w-2 h-2 bg-[#00D8FF] rounded-full shadow-[0_0_8px_rgba(0,216,255,0.8)]"></span>
             </button>
 
             {/* Notification Bell */}

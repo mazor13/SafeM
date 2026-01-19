@@ -1,8 +1,8 @@
-// ===========================================
 // SafeM - ColumnManager Component
 // Dynamic Entity Engine - Column Management Modal
+// Redesigned with LeadMatrix AI dark theme
 // ===========================================
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, Plus, Type, Hash, CheckSquare, User, Calendar, Flag, Paperclip } from 'lucide-react';
 import {
   ColumnDefinition,
@@ -94,7 +94,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
     setRequired(existingColumn?.required || false);
     setSettings(existingColumn?.settings || {});
     setError(null);
-  }, [existingColumn, isEditMode]);
+  }, [existingColumn, isEditMode, selectedType]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -166,7 +166,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
   const handleDelete = useCallback(async () => {
     if (!existingColumn || !onDelete) return;
     
-    if (!confirm(`האם למחוק את העמודה "${existingColumn.title}"? פעולה זו אינה ניתנת לביטול.`)) {
+    if (!window.confirm(`האם למחוק את העמודה "${existingColumn.title}"? פעולה זו אינה ניתנת לביטול.`)) {
       return;
     }
 
@@ -186,20 +186,20 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
   // Render type selection step
   const renderTypeSelection = () => (
     <div className="p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">בחר סוג עמודה</h3>
+      <h3 className="text-lg font-medium text-white mb-4">בחר סוג עמודה</h3>
       <div className="grid grid-cols-2 gap-3">
         {COLUMN_TYPES.map((option) => (
           <button
             key={option.type}
             onClick={() => handleTypeSelect(option.type)}
-            className="flex items-start gap-3 p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-right"
+            className="flex items-start gap-3 p-4 border border-[rgba(0,216,255,0.2)] rounded-lg hover:border-[rgba(0,216,255,0.6)] hover:bg-[rgba(0,216,255,0.05)] transition-colors text-right"
           >
-            <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-600">
+            <div className="flex-shrink-0 w-10 h-10 bg-[rgba(0,216,255,0.1)] rounded-lg flex items-center justify-center text-[rgba(0,216,255,0.8)]">
               {option.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900">{option.label}</div>
-              <div className="text-sm text-gray-500 mt-0.5">{option.description}</div>
+              <div className="font-medium text-white">{option.label}</div>
+              <div className="text-sm text-[#A9B3C1] mt-0.5">{option.description}</div>
             </div>
           </button>
         ))}
@@ -212,17 +212,17 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
     <div className="p-6 space-y-4">
       {/* Column Type Badge */}
       {selectedType && (
-        <div className="flex items-center gap-2 pb-4 border-b">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+        <div className="flex items-center gap-2 pb-4 border-b border-[rgba(0,216,255,0.2)]">
+          <div className="w-8 h-8 bg-[rgba(0,216,255,0.15)] rounded-lg flex items-center justify-center text-[rgba(0,216,255,0.8)]">
             {COLUMN_TYPES.find(t => t.type === selectedType)?.icon}
           </div>
-          <span className="font-medium text-gray-900">
+          <span className="font-medium text-white">
             {COLUMN_TYPES.find(t => t.type === selectedType)?.label}
           </span>
           {!isEditMode && (
             <button
               onClick={() => setStep('type')}
-              className="text-sm text-blue-600 hover:underline mr-auto"
+              className="text-sm text-[rgba(0,216,255,0.8)] hover:text-[rgba(0,216,255,1)] hover:underline mr-auto"
             >
               שנה סוג
             </button>
@@ -232,7 +232,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
 
       {/* Title */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-[#A9B3C1] mb-1">
           שם העמודה *
         </label>
         <input
@@ -240,14 +240,14 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="לדוגמה: תאריך יעד"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white placeholder-[#A9B3C1] focus:ring-2 focus:ring-[rgba(0,216,255,0.5)] focus:border-[rgba(0,216,255,0.5)]"
           autoFocus
         />
       </div>
 
       {/* Width */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-[#A9B3C1] mb-1">
           רוחב (פיקסלים)
         </label>
         <input
@@ -256,7 +256,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
           onChange={(e) => setWidth(parseInt(e.target.value) || DEFAULT_COLUMN_WIDTH[selectedType || 'text'])}
           min={50}
           max={500}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white focus:ring-2 focus:ring-[rgba(0,216,255,0.5)] focus:border-[rgba(0,216,255,0.5)]"
         />
       </div>
 
@@ -267,9 +267,9 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
           id="required"
           checked={required}
           onChange={(e) => setRequired(e.target.checked)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          className="w-4 h-4 text-[rgba(0,216,255,0.8)] bg-[#1C2435] border-[rgba(0,216,255,0.3)] rounded focus:ring-[rgba(0,216,255,0.5)]"
         />
-        <label htmlFor="required" className="text-sm text-gray-700">
+        <label htmlFor="required" className="text-sm text-[#A9B3C1]">
           שדה חובה
         </label>
       </div>
@@ -284,16 +284,16 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
     switch (selectedType) {
       case 'text':
         return (
-          <div className="space-y-3 pt-4 border-t">
-            <h4 className="font-medium text-gray-900">הגדרות טקסט</h4>
+          <div className="space-y-3 pt-4 border-t border-[rgba(0,216,255,0.2)]">
+            <h4 className="font-medium text-white">הגדרות טקסט</h4>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">טקסט ברירת מחדל</label>
+              <label className="block text-sm text-[#A9B3C1] mb-1">טקסט ברירת מחדל</label>
               <input
                 type="text"
                 value={settings.placeholder || ''}
                 onChange={(e) => setSettings({ ...settings, placeholder: e.target.value })}
                 placeholder="טקסט שיוצג כשהשדה ריק"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white placeholder-[#A9B3C1] text-sm focus:ring-2 focus:ring-[rgba(0,216,255,0.5)]"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -302,9 +302,9 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
                 id="multiline"
                 checked={settings.multiline || false}
                 onChange={(e) => setSettings({ ...settings, multiline: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                className="w-4 h-4 text-[rgba(0,216,255,0.8)] bg-[#1C2435] border-[rgba(0,216,255,0.3)] rounded"
               />
-              <label htmlFor="multiline" className="text-sm text-gray-700">
+              <label htmlFor="multiline" className="text-sm text-[#A9B3C1]">
                 אפשר מספר שורות
               </label>
             </div>
@@ -313,47 +313,47 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
 
       case 'number':
         return (
-          <div className="space-y-3 pt-4 border-t">
-            <h4 className="font-medium text-gray-900">הגדרות מספר</h4>
+          <div className="space-y-3 pt-4 border-t border-[rgba(0,216,255,0.2)]">
+            <h4 className="font-medium text-white">הגדרות מספר</h4>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">מינימום</label>
+                <label className="block text-sm text-[#A9B3C1] mb-1">מינימום</label>
                 <input
                   type="number"
                   value={settings.min ?? ''}
                   onChange={(e) => setSettings({ ...settings, min: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white text-sm focus:ring-2 focus:ring-[rgba(0,216,255,0.5)]"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">מקסימום</label>
+                <label className="block text-sm text-[#A9B3C1] mb-1">מקסימום</label>
                 <input
                   type="number"
                   value={settings.max ?? ''}
                   onChange={(e) => setSettings({ ...settings, max: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white text-sm focus:ring-2 focus:ring-[rgba(0,216,255,0.5)]"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm text-gray-600 mb-1">תחילית</label>
+                <label className="block text-sm text-[#A9B3C1] mb-1">תחילית</label>
                 <input
                   type="text"
                   value={settings.prefix || ''}
                   onChange={(e) => setSettings({ ...settings, prefix: e.target.value })}
                   placeholder="₪"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white placeholder-[#A9B3C1] text-sm focus:ring-2 focus:ring-[rgba(0,216,255,0.5)]"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">סיומת</label>
+                <label className="block text-sm text-[#A9B3C1] mb-1">סיומת</label>
                 <input
                   type="text"
                   value={settings.suffix || ''}
                   onChange={(e) => setSettings({ ...settings, suffix: e.target.value })}
                   placeholder="%"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded-lg text-white placeholder-[#A9B3C1] text-sm focus:ring-2 focus:ring-[rgba(0,216,255,0.5)]"
                 />
               </div>
             </div>
@@ -362,8 +362,8 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
 
       case 'status':
         return (
-          <div className="space-y-3 pt-4 border-t">
-            <h4 className="font-medium text-gray-900">אפשרויות סטטוס</h4>
+          <div className="space-y-3 pt-4 border-t border-[rgba(0,216,255,0.2)]">
+            <h4 className="font-medium text-white">אפשרויות סטטוס</h4>
             <div className="space-y-2">
               {(settings.options || []).map((opt: any, idx: number) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -375,7 +375,7 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
                       newOptions[idx] = { ...opt, color: e.target.value };
                       setSettings({ ...settings, options: newOptions });
                     }}
-                    className="w-8 h-8 rounded cursor-pointer"
+                    className="w-8 h-8 rounded cursor-pointer bg-[#1C2435] border border-[rgba(0,216,255,0.3)]"
                   />
                   <input
                     type="text"
@@ -385,14 +385,14 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
                       newOptions[idx] = { ...opt, label: e.target.value };
                       setSettings({ ...settings, options: newOptions });
                     }}
-                    className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                    className="flex-1 px-3 py-1 bg-[rgba(14,26,53,0.5)] border border-[rgba(0,216,255,0.3)] rounded text-white text-sm focus:ring-2 focus:ring-[rgba(0,216,255,0.5)]"
                   />
                   <button
                     onClick={() => {
                       const newOptions = settings.options.filter((_: any, i: number) => i !== idx);
                       setSettings({ ...settings, options: newOptions });
                     }}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-400 hover:text-red-300"
                   >
                     <X size={16} />
                   </button>
@@ -400,10 +400,10 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
               ))}
               <button
                 onClick={() => {
-                  const newOptions = [...(settings.options || []), { value: `option_${Date.now()}`, label: '', color: '#6B7280' }];
+                  const newOptions = [...(settings.options || []), { value: `option_${Date.now()}`, label: '', color: '#00D8FF' }];
                   setSettings({ ...settings, options: newOptions });
                 }}
-                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                className="flex items-center gap-1 text-sm text-[rgba(0,216,255,0.8)] hover:text-[rgba(0,216,255,1)]"
               >
                 <Plus size={16} />
                 הוסף אפשרות
@@ -414,17 +414,17 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
 
       case 'date':
         return (
-          <div className="space-y-3 pt-4 border-t">
-            <h4 className="font-medium text-gray-900">הגדרות תאריך</h4>
+          <div className="space-y-3 pt-4 border-t border-[rgba(0,216,255,0.2)]">
+            <h4 className="font-medium text-white">הגדרות תאריך</h4>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="includeTime"
                 checked={settings.includeTime || false}
                 onChange={(e) => setSettings({ ...settings, includeTime: e.target.checked })}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded"
+                className="w-4 h-4 text-[rgba(0,216,255,0.8)] bg-[#1C2435] border-[rgba(0,216,255,0.3)] rounded"
               />
-              <label htmlFor="includeTime" className="text-sm text-gray-700">
+              <label htmlFor="includeTime" className="text-sm text-[#A9B3C1]">
                 כולל שעה
               </label>
             </div>
@@ -441,19 +441,19 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black bg-opacity-70" onClick={onClose} />
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg">
+        <div className="relative bg-[#1C2435] rounded-xl shadow-xl w-full max-w-lg border border-[rgba(0,216,255,0.3)]">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b">
-            <h2 className="text-lg font-semibold text-gray-900">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(0,216,255,0.2)]">
+            <h2 className="text-lg font-semibold text-white">
               {isEditMode ? 'עריכת עמודה' : 'הוספת עמודה חדשה'}
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-500"
+              className="text-[#A9B3C1] hover:text-white"
             >
               <X size={20} />
             </button>
@@ -464,20 +464,20 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
 
           {/* Error */}
           {error && (
-            <div className="px-6 py-2 bg-red-50 text-red-600 text-sm">
+            <div className="px-6 py-2 bg-red-500/20 text-red-300 text-sm border-t border-red-500/30">
               {error}
             </div>
           )}
 
           {/* Footer */}
           {step === 'details' && (
-            <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50 rounded-b-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-[rgba(0,216,255,0.2)] bg-[rgba(14,26,53,0.3)] rounded-b-xl">
               <div>
                 {isEditMode && onDelete && (
                   <button
                     onClick={handleDelete}
                     disabled={deleting || saving}
-                    className="text-red-600 hover:text-red-700 text-sm font-medium disabled:opacity-50"
+                    className="text-red-400 hover:text-red-300 text-sm font-medium disabled:opacity-50"
                   >
                     {deleting ? 'מוחק...' : 'מחק עמודה'}
                   </button>
@@ -487,14 +487,14 @@ export const ColumnManager: React.FC<ColumnManagerProps> = ({
                 <button
                   onClick={onClose}
                   disabled={saving || deleting}
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 text-[#A9B3C1] hover:bg-[rgba(0,216,255,0.1)] rounded-lg transition-colors"
                 >
                   ביטול
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving || deleting || !title.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[rgba(0,216,255,0.8)] text-white rounded-lg hover:bg-[rgba(0,216,255,1)] transition-colors disabled:opacity-50"
                 >
                   {saving ? 'שומר...' : isEditMode ? 'שמור שינויים' : 'הוסף עמודה'}
                 </button>

@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap');
+
+:root {
+  --matrix-blue: #0E1A35;
+  --electric-cyan: #00D8FF;
+  --accent-orange: #FF8A00;
+  --graphite-gray: #1C2435;
+  --light-gray: #A9B3C1;
+  
+  --background: #0E1A35;
+  --foreground: #FFFFFF;
+  --card: #1C2435;
+  --border: rgba(0, 216, 255, 0.2);
+  --primary: #00D8FF;
+  --radius: 1rem;
+}
+
+@layer base {
+  body {
+    @apply bg-[#0E1A35] text-white;
+    font-family: 'Inter', sans-serif;
+  }
+  h1, h2, h3 { font-family: 'Montserrat', sans-serif; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 216, 255, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(0, 216, 255, 0.6); }
+}

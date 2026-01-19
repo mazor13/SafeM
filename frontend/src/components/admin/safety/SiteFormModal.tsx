@@ -1,137 +1,149 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, MapPin, Briefcase } from 'lucide-react';
-import { useClients } from '../../../hooks/useClients';
-import { Site, SiteType, RiskLevel } from '../../../types/site.types';
+import React, { useState } from 'react';
+import { X, ShieldCheck, MapPin, Building, Globe, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SiteFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: any) => Promise<void>;
-  initialData?: Partial<Site>;
 }
 
-export default function SiteFormModal({ isOpen, onClose, onSubmit, initialData }: SiteFormModalProps) {
-  const { clients } = useClients();
-  const [loading, setLoading] = useState(false);
-  
+export default function SiteFormModal({ isOpen, onClose, onSubmit }: SiteFormModalProps) {
   const [formData, setFormData] = useState({
-    clientId: '',
     name: '',
-    type: 'campus' as SiteType,
-    riskLevel: 'low' as RiskLevel,
-    address: { street: '', city: '', country: 'Israel' },
-    primaryContact: { name: '', role: '', email: '', phone: '' }
+    type: 'office',
+    riskLevel: 'low',
+    address: { city: '', street: '' },
+    clientId: 'LeadMatrix-Node-01'
   });
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData(prev => ({ ...prev, ...(initialData as any) }));
-    }
-  }, [initialData, isOpen]);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      await onSubmit(formData);
-      onClose();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    setSubmitting(true);
+    await onSubmit(formData);
+    setSubmitting(false);
+    onClose();
   };
 
-  // Dark Mode Input Classes
-  const labelClass = "block text-sm font-medium text-slate-300 mb-2";
-  const inputClass = "w-full rounded-lg border border-slate-600 bg-slate-700/50 text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder-slate-500";
-  const sectionTitle = "text-sm font-bold text-blue-400 uppercase tracking-wider mb-4 flex items-center gap-2";
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 transition-all" dir="rtl">
-      {/* Modal Container: Slate-800 */}
-      <div className="bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col border border-slate-700 text-white">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-700 bg-slate-800 sticky top-0 z-10">
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-               {initialData ? 'עריכת פרטי אתר' : 'הקמת אתר חדש'}
-            </h2>
-          </div>
-          <button 
-            type="button" 
-            onClick={onClose} 
-            className="text-slate-400 hover:text-white p-2 hover:bg-slate-700 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-8 space-y-8">
-            
-            <section>
-              <h3 className={sectionTitle}><Briefcase className="w-4 h-4" /> פרטים כלליים</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="col-span-2">
-                  <label className={labelClass}>שיוך ללקוח</label>
-                  <select
-                    required
-                    value={formData.clientId}
-                    onChange={e => setFormData({ ...formData, clientId: e.target.value })}
-                    className={inputClass}
-                    disabled={!!initialData}
-                  >
-                    <option value="" className="text-slate-500">בחר לקוח מהרשימה...</option>
-                    {clients.map(client => (
-                      <option key={client.id} value={client.id}>{client.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className={labelClass}>שם האתר / המתקן</label>
-                  <input required type="text" placeholder="למשל: קמפוס צפון" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inputClass} />
-                </div>
-                 <div>
-                  <label className={labelClass}>סוג אתר</label>
-                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as SiteType })} className={inputClass}>
-                    <option value="campus">קמפוס / מתחם</option>
-                    <option value="building">בניין משרדים</option>
-                    <option value="factory">מפעל תעשייה</option>
-                    <option value="warehouse">מחסן לוגיסטי</option>
-                    <option value="retail">מרכז מסחרי</option>
-                  </select>
-                </div>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[20000] flex items-center justify-center p-4 bg-[#0E1A35]/80 backdrop-blur-md" dir="rtl">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 20 }}
+          className="bg-[#1C2435] border border-[#00D8FF]/30 rounded-[2rem] w-full max-w-2xl shadow-[0_0_50px_rgba(0,216,255,0.15)] overflow-hidden"
+        >
+          {/* Header - Intelligence Style */}
+          <div className="relative p-8 border-b border-[#00D8FF]/10 bg-[#0E1A35]/30">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-[#00D8FF]/10 rounded-xl flex items-center justify-center border border-[#00D8FF]/20 shadow-[0_0_15px_rgba(0,216,255,0.2)]">
+                <Zap className="w-6 h-6 text-[#00D8FF]" />
               </div>
-            </section>
-
-            <section className="border-t border-slate-700 pt-6">
-              <h3 className={sectionTitle}><MapPin className="w-4 h-4" /> כתובת ומיקום</h3>
-              <div className="grid grid-cols-2 gap-5">
-                 <div>
-                    <label className={labelClass}>עיר</label>
-                    <input required placeholder="הזן עיר..." value={formData.address.city} onChange={e => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })} className={inputClass} />
-                 </div>
-                 <div>
-                    <label className={labelClass}>רחוב ומספר</label>
-                    <input required placeholder="הזן רחוב..." value={formData.address.street} onChange={e => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })} className={inputClass} />
-                 </div>
+              <div>
+                <h2 className="text-2xl font-black text-white tracking-tight">Establish New Node</h2>
+                <p className="text-[#A9B3C1] text-sm font-medium">הגדרת אתר חדש ברשת המודיעין של Aegis</p>
               </div>
-            </section>
-          </div>
-
-          <div className="p-6 border-t border-slate-700 bg-slate-800/50 flex justify-end gap-3 rounded-b-2xl sticky bottom-0 z-10">
-            <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl border border-slate-600 text-slate-300 font-bold hover:bg-slate-700 transition-colors">ביטול</button>
-            <button type="submit" className="px-8 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-500/30 flex items-center gap-2 transition-all">
-              <Save className="w-5 h-5" />
-              {loading ? 'שומר...' : 'שמור אתר'}
+            </div>
+            <button onClick={onClose} className="absolute top-8 left-8 text-[#A9B3C1] hover:text-white transition-colors">
+              <X size={24} />
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Name Input */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-bold text-[#A9B3C1] mr-1">
+                  <Building size={14} className="text-[#00D8FF]" /> שם האתר
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="לדוגמה: קמפוס צורן"
+                  className="w-full bg-[#0E1A35] border border-[#00D8FF]/20 rounded-xl px-4 py-3.5 text-white outline-none focus:border-[#00D8FF] focus:ring-2 focus:ring-[#00D8FF]/20 transition-all font-medium"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+
+              {/* Node Type */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-bold text-[#A9B3C1] mr-1">
+                  <Globe size={14} className="text-[#00D8FF]" /> סיווג מתקן
+                </label>
+                <select 
+                  className="w-full bg-[#0E1A35] border border-[#00D8FF]/20 rounded-xl px-4 py-3.5 text-white outline-none focus:border-[#00D8FF] transition-all font-medium appearance-none"
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                >
+                  <option value="office">משרדים</option>
+                  <option value="industrial">תעשייה</option>
+                  <option value="logistics">לוגיסטיקה</option>
+                </select>
+              </div>
+
+              {/* Location */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-bold text-[#A9B3C1] mr-1">
+                  <MapPin size={14} className="text-[#00D8FF]" /> עיר / מיקום
+                </label>
+                <input
+                  required
+                  type="text"
+                  className="w-full bg-[#0E1A35] border border-[#00D8FF]/20 rounded-xl px-4 py-3.5 text-white outline-none focus:border-[#00D8FF] transition-all font-medium"
+                  value={formData.address.city}
+                  onChange={(e) => setFormData({...formData, address: {...formData.address, city: e.target.value}})}
+                />
+              </div>
+
+              {/* Risk Level */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm font-bold text-[#A9B3C1] mr-1">
+                  <ShieldCheck size={14} className="text-[#00D8FF]" /> רמת סיכון (AI Score)
+                </label>
+                <div className="flex gap-2">
+                  {['low', 'medium', 'high'].map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setFormData({...formData, riskLevel: level})}
+                      className={`flex-1 py-2 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${
+                        formData.riskLevel === level 
+                        ? 'bg-[#00D8FF] text-[#0E1A35] border-[#00D8FF]' 
+                        : 'border-[#00D8FF]/20 text-[#A9B3C1] hover:bg-[#00D8FF]/5'
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-6 flex gap-4">
+              <button 
+                type="button" 
+                onClick={onClose}
+                className="flex-1 px-8 py-4 bg-transparent border border-[#00D8FF]/20 text-[#A9B3C1] font-bold rounded-2xl hover:bg-[#00D8FF]/5 transition-all"
+              >
+                ביטול
+              </button>
+              <button 
+                type="submit"
+                disabled={submitting}
+                className="flex-1 px-8 py-4 bg-gradient-to-r from-[#00D8FF] to-[#0099CC] text-[#0E1A35] font-black rounded-2xl shadow-[0_0_25px_rgba(0,216,255,0.4)] hover:scale-[1.02] transition-all disabled:opacity-50"
+              >
+                {submitting ? 'מעבד...' : 'בצע הקמה (Establish)'}
+              </button>
+            </div>
+          </form>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

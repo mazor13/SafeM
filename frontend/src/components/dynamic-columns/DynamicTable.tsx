@@ -2,6 +2,7 @@
  * DynamicTable Component
  * 
  * Main table component that integrates all dynamic column features.
+ * Redesigned with LeadMatrix AI dark theme.
  * 
  * @package SafeM
  * @module DynamicColumns
@@ -51,18 +52,18 @@ interface DynamicTableProps {
 
 const TableSkeleton: React.FC<{ columns: number; rows: number }> = ({ columns, rows }) => (
   <div className="animate-pulse">
-    <div className="flex border-b border-gray-200 bg-gray-50">
+    <div className="flex border-b border-[rgba(0,216,255,0.2)] bg-[rgba(14,26,53,0.5)]">
       {Array.from({ length: columns }).map((_, i) => (
         <div key={i} className="flex-1 p-3">
-          <div className="h-4 bg-gray-300 rounded w-3/4" />
+          <div className="h-4 bg-[rgba(0,216,255,0.15)] rounded w-3/4" />
         </div>
       ))}
     </div>
     {Array.from({ length: rows }).map((_, rowIdx) => (
-      <div key={rowIdx} className="flex border-b border-gray-100">
+      <div key={rowIdx} className="flex border-b border-[rgba(0,216,255,0.1)]">
         {Array.from({ length: columns }).map((_, colIdx) => (
           <div key={colIdx} className="flex-1 p-3">
-            <div className="h-4 bg-gray-200 rounded w-full" />
+            <div className="h-4 bg-[rgba(0,216,255,0.1)] rounded w-full" />
           </div>
         ))}
       </div>
@@ -71,8 +72,8 @@ const TableSkeleton: React.FC<{ columns: number; rows: number }> = ({ columns, r
 );
 
 const EmptyState: React.FC<{ message: string }> = ({ message }) => (
-  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-    <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div className="flex flex-col items-center justify-center py-12 text-[#A9B3C1]">
+    <svg className="w-16 h-16 mb-4 text-[rgba(0,216,255,0.3)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
@@ -105,7 +106,7 @@ const HeaderCell = memo<{
 
   return (
     <th
-      className="relative px-4 py-3 text-right font-medium text-gray-700 bg-gray-50 border-b border-gray-200 group"
+      className="relative px-4 py-3 text-right font-medium text-[#A9B3C1] bg-[rgba(14,26,53,0.5)] border-b border-[rgba(0,216,255,0.2)] group"
       style={{ width: column.width || 150, minWidth: 80 }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -113,10 +114,10 @@ const HeaderCell = memo<{
         
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="p-1 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          className="p-1 hover:bg-[rgba(0,216,255,0.15)] rounded opacity-0 group-hover:opacity-100 transition-opacity"
           title="הגדרות עמודה"
         >
-          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-[#A9B3C1]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
           </svg>
         </button>
@@ -152,12 +153,12 @@ const TableToolbar: React.FC<{
   onReorderColumns: () => void;
   columnCount: number;
 }> = ({ onAddColumn, onReorderColumns, columnCount }) => (
-  <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200">
-    <span className="text-sm text-gray-500">{columnCount} עמודות</span>
+  <div className="flex items-center justify-between px-4 py-2 bg-[#1C2435] border-b border-[rgba(0,216,255,0.2)]">
+    <span className="text-sm text-[#A9B3C1]">{columnCount} עמודות</span>
     <div className="flex items-center gap-2">
       <button
         onClick={onReorderColumns}
-        className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded transition-colors"
+        className="flex items-center gap-1 px-3 py-1.5 text-sm text-[#A9B3C1] hover:bg-[rgba(0,216,255,0.1)] rounded transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -166,7 +167,7 @@ const TableToolbar: React.FC<{
       </button>
       <button
         onClick={onAddColumn}
-        className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+        className="flex items-center gap-1 px-3 py-1.5 text-sm text-white bg-[rgba(0,216,255,0.8)] hover:bg-[rgba(0,216,255,1)] rounded transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -301,14 +302,14 @@ export const DynamicTable: React.FC<DynamicTableProps> = ({
 
   if (loading || columnsLoading) {
     return (
-      <div className={`bg-white rounded-lg shadow overflow-hidden ${className}`}>
+      <div className={`bg-[#1C2435] rounded-lg shadow-lg overflow-hidden ${className}`}>
         <TableSkeleton columns={5} rows={5} />
       </div>
     );
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow overflow-hidden ${className}`}>
+    <div className={`bg-[#1C2435] rounded-lg shadow-lg overflow-hidden ${className}`}>
       <TableToolbar
         onAddColumn={() => { setEditingColumn(null); setShowColumnManager(true); }}
         onReorderColumns={() => setShowColumnReorder(true)}
@@ -320,12 +321,12 @@ export const DynamicTable: React.FC<DynamicTableProps> = ({
           <thead>
             <tr>
               {selectable && (
-                <th className="w-12 px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <th className="w-12 px-4 py-3 bg-[rgba(14,26,53,0.5)] border-b border-[rgba(0,216,255,0.2)]">
                   <input
                     type="checkbox"
                     checked={selectedRows.length === data.length && data.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[rgba(0,216,255,0.3)] bg-[#1C2435] text-[rgba(0,216,255,0.8)] focus:ring-[rgba(0,216,255,0.5)]"
                   />
                 </th>
               )}
@@ -358,9 +359,9 @@ export const DynamicTable: React.FC<DynamicTableProps> = ({
                   key={row.id}
                   onClick={() => onRowClick?.(row.id)}
                   className={`
-                    border-b border-gray-100 transition-colors
-                    ${onRowClick ? 'cursor-pointer hover:bg-blue-50' : ''}
-                    ${selectedRows.includes(row.id) ? 'bg-blue-50' : 'bg-white'}
+                    border-b border-[rgba(0,216,255,0.1)] transition-colors
+                    ${onRowClick ? 'cursor-pointer hover:bg-[rgba(0,216,255,0.05)]' : ''}
+                    ${selectedRows.includes(row.id) ? 'bg-[rgba(0,216,255,0.08)]' : 'bg-[#1C2435]'}
                   `}
                 >
                   {selectable && (
@@ -370,12 +371,12 @@ export const DynamicTable: React.FC<DynamicTableProps> = ({
                         checked={selectedRows.includes(row.id)}
                         onChange={() => handleSelectRow(row.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-[rgba(0,216,255,0.3)] bg-[#1C2435] text-[rgba(0,216,255,0.8)] focus:ring-[rgba(0,216,255,0.5)]"
                       />
                     </td>
                   )}
                   {visibleColumns.map((column) => (
-                    <td key={column.id} className="px-4 py-3" style={{ width: column.width || 150 }}>
+                    <td key={column.id} className="px-4 py-3 text-white" style={{ width: column.width || 150 }}>
                       <CellFactory
                         column={column}
                         value={getCellValue(row, column)}
@@ -403,12 +404,12 @@ export const DynamicTable: React.FC<DynamicTableProps> = ({
 
       {/* Column Reorder Modal */}
       {showColumnReorder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-[#1C2435] rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden border border-[rgba(0,216,255,0.3)]">
+            <div className="p-4 border-b border-[rgba(0,216,255,0.2)]">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">סדר עמודות</h2>
-                <button onClick={() => setShowColumnReorder(false)} className="p-1 hover:bg-gray-100 rounded">
+                <h2 className="text-lg font-semibold text-white">סדר עמודות</h2>
+                <button onClick={() => setShowColumnReorder(false)} className="p-1 hover:bg-[rgba(0,216,255,0.1)] rounded text-[#A9B3C1]">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>

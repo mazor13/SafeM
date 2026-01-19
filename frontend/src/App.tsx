@@ -1,9 +1,14 @@
+import UserManagementPage from './pages/admin/users/UserManagementPage';
 import HelpCenterPage from './pages/admin/help/HelpCenterPage';
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthProvider, { useAuth } from './providers/AuthProvider';
 import AdminLayout from './layouts/AdminLayout';
 import Login from './pages/auth/Login';
+
+// --- Legal Pages ---
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import TermsOfService from './pages/legal/TermsOfService';
 
 // --- CRM ---
 import LeadsPage from './pages/admin/crm/LeadsPage';
@@ -22,7 +27,7 @@ import ClientSettings from './pages/admin/ClientSettings';
 // --- ציוד ומוצרים ---
 import EquipmentListPage from './pages/admin/equipment/EquipmentListPage';
 import EquipmentFormWizard from './pages/admin/equipment/EquipmentFormWizard';
-import EquipmentDetailPage from './pages/admin/equipment/EquipmentDetailPage'; // ✅ NEW IMPORT
+import EquipmentDetailPage from './pages/admin/equipment/EquipmentDetailPage';
 import GlobalCatalog from './pages/admin/GlobalCatalog';
 import ProductManagement from './pages/admin/ProductManagement';
 import FindingsPage from './pages/admin/equipment/FindingsPage';
@@ -59,7 +64,7 @@ import DocumentEditorPage from './pages/admin/documents/DocumentEditorPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="h-screen bg-slate-900 flex items-center justify-center text-white">טוען...</div>;
+  if (loading) return <div className="h-screen bg-[#0E1A35] flex items-center justify-center text-white">טוען...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -68,8 +73,12 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
+        {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         
+        {/* Protected Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="dashboard-bi" element={<DashboardBI />} />
@@ -92,7 +101,7 @@ export default function App() {
           {/* Equipment */}
           <Route path="equipment" element={<EquipmentListPage />} />
           <Route path="equipment/new" element={<EquipmentFormWizard />} />
-          <Route path="equipment/:equipmentId" element={<EquipmentDetailPage />} /> {/* ✅ UPDATED */}
+          <Route path="equipment/:equipmentId" element={<EquipmentDetailPage />} />
           <Route path="products" element={<GlobalCatalog />} />
           <Route path="product-management" element={<ProductManagement />} />
           <Route path="findings" element={<FindingsPage />} />
@@ -127,8 +136,9 @@ export default function App() {
           <Route path="documents/:docId" element={<DocumentEditorPage />} />
           <Route path="branding" element={<BrandingSettings />} />
           <Route path="settings" element={<SystemSettings />} />
+          <Route path="users" element={<UserManagementPage />} />
           
-          <Route path="*" element={<div className="p-10 text-white">404 - דף לא נמצא</div>} />
+          <Route path="*" element={<div className="p-10 text-white bg-[#0E1A35]">404 - דף לא נמצא</div>} />
         </Route>
 
         <Route path="/" element={<Navigate to="/admin" replace />} />
